@@ -1,23 +1,9 @@
 // ─── Core Enums / Literal Types ──────────────────────────────────────────────
 
-export type Role = 'father' | 'operator' | 'admin';
-
 export type ContentStatus =
-  | 'IDEA'
-  | 'PLANNED'
-  | 'RESEARCHING'
-  | 'SCRIPT_DRAFT'
-  | 'REVIEW'
-  | 'APPROVED'
-  | 'RECORDING'
-  | 'EDITING'
-  | 'SCHEDULED'
-  | 'PUBLISHED'
-  | 'ANALYZING'
-  | 'LEARNED'
-  | 'BLOCKED'
-  | 'REJECTED'
-  | 'ARCHIVED';
+  | 'IDEA' | 'PLANNED' | 'RESEARCHING' | 'SCRIPT_DRAFT' | 'REVIEW'
+  | 'APPROVED' | 'RECORDING' | 'EDITING' | 'SCHEDULED' | 'PUBLISHED'
+  | 'ANALYZING' | 'LEARNED' | 'BLOCKED' | 'REJECTED' | 'ARCHIVED';
 
 export type Pillar =
   | 'Shooting Education'
@@ -27,20 +13,11 @@ export type Pillar =
   | 'Myths and Hard Truths';
 
 export type ContentType =
-  | 'reel'
-  | 'youtube_short'
-  | 'youtube'
-  | 'post'
-  | 'carousel'
-  | 'story'
-  | 'masterclass'
-  | 'email';
+  | 'reel' | 'youtube_short' | 'facebook_reel' | 'youtube'
+  | 'post' | 'carousel' | 'story' | 'masterclass' | 'email';
 
 export type VerificationStatus = 'verified' | 'unverified' | 'disputed';
-
 export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked';
-
-// ─── Domain Objects ───────────────────────────────────────────────────────────
 
 export interface ContentItem {
   id: string;
@@ -163,11 +140,12 @@ export interface TrendItem {
 export interface Profile {
   id: string;
   name: string;
-  role: Role;
+  guide_mode?: boolean;
+  sound_enabled?: boolean;
+  onboarding_completed?: boolean;
+  onboarding_skipped?: boolean;
   created_at: string;
 }
-
-// ─── API Response types ───────────────────────────────────────────────────────
 
 export interface ApiSuccess<T> {
   ok: true;
@@ -176,28 +154,19 @@ export interface ApiSuccess<T> {
 }
 
 export interface ApiError {
-  ok?: false;
+  ok: false;
   error: string;
-  hindiError?: string;
+  userMessage?: string;
   details?: unknown;
 }
 
 export type ApiResponse<T> = ApiSuccess<T> | ApiError;
-
-// ─── UI / State types ─────────────────────────────────────────────────────────
 
 export interface DailyTask extends ContentItem {
   urgency: 'overdue' | 'today' | 'soon';
 }
 
 export type AssistantIntent =
-  | 'get_today_plan'
-  | 'create_idea'
-  | 'generate_script'
-  | 'check_research'
-  | 'approve_content'
-  | 'get_trends'
-  | 'ask_knowledge'
-  | 'get_analytics'
-  | 'general_query'
-  | 'unclear';
+  | 'get_today_plan' | 'create_idea' | 'generate_script' | 'check_research'
+  | 'approve_content' | 'get_trends' | 'ask_knowledge' | 'schedule_shoot'
+  | 'edit_script' | 'create_series' | 'create_masterclass' | 'general_query' | 'unclear';

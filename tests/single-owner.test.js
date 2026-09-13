@@ -3,17 +3,17 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 
 const auth = fs.readFileSync('lib/auth/server.ts', 'utf8');
-const middleware = fs.readFileSync('middleware.ts', 'utf8');
+const proxy = fs.readFileSync('proxy.ts', 'utf8');
 const shell = fs.readFileSync('components/AppShell.tsx', 'utf8');
 
 test('product auth has no role API', () => {
   assert.doesNotMatch(auth, /requireRole|getRole|\bRole\b/);
 });
 
-test('middleware protects the owner app without role routing', () => {
-  assert.doesNotMatch(middleware, /profiles.*role|x-user-role|\/operator/);
-  assert.doesNotMatch(middleware, /'\/signup'/);
-  assert.match(middleware, /x-user-id/);
+test('proxy protects the owner app without role routing', () => {
+  assert.doesNotMatch(proxy, /profiles.*role|x-user-role|\/operator/);
+  assert.doesNotMatch(proxy, /'\/signup'/);
+  assert.match(proxy, /x-user-id/);
 });
 
 test('mobile navigation is Home Ideas Plan Content Masterclass', () => {
@@ -21,6 +21,7 @@ test('mobile navigation is Home Ideas Plan Content Masterclass', () => {
     assert.match(shell, new RegExp(`label: ["']${label}["']`));
   }
   assert.doesNotMatch(shell, /label: ["']Help["']/);
+  assert.match(shell, /href="\/assistant"/);
 });
 
 test('single-owner migration is additive and replaces role policies', () => {
