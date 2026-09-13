@@ -10,9 +10,10 @@ test('product auth has no role API', () => {
   assert.doesNotMatch(auth, /requireRole|getRole|\bRole\b/);
 });
 
-test('proxy protects the owner app without role routing', () => {
+test('proxy protects the owner app without role routing or public signup', () => {
   assert.doesNotMatch(proxy, /profiles.*role|x-user-role|\/operator/);
-  assert.doesNotMatch(proxy, /'\/signup'/);
+  const publicRoutes = proxy.match(/const publicRoutes = \[([^\]]+)\]/)?.[1] ?? '';
+  assert.doesNotMatch(publicRoutes, /signup/);
   assert.match(proxy, /x-user-id/);
 });
 

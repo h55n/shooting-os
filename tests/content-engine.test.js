@@ -7,8 +7,8 @@ function loadTs(path) {
   const source = fs.readFileSync(path, 'utf8');
   const output = ts.transpileModule(source, {
     compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind?.CommonJS ?? 1,
+      target: ts.ScriptTarget?.ES2022 ?? 9,
       esModuleInterop: true,
     },
   }).outputText;
