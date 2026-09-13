@@ -71,8 +71,10 @@ export async function POST(request: Request) {
     const moduleRows = outline.modules.map((module, index) => ({ masterclass_id: masterclass.id, title: module.title, order: index + 1, learning_objective: module.learningObjective, estimated_minutes: module.estimatedMinutes, status: 'draft' }));
     const { error: modulesError } = await supabase.from('masterclass_modules').insert(moduleRows);
     if (modulesError) throw modulesError;
-    await supabase.from('audit_logs').insert({ user_id: user.id, entity_type: 'masterclass', entity_id: masterclass.id, action: 'OUTLINE_CREATED', metadata: { model, targetDurationMinutes } });
-    return ok({ ...masterclass, outline, model, persisted: true }, { status: 201 });
+    const { error: versionError } = await supabase.from('masterclass_versions').insert({ masterclass_id: masterclass.id, version: 1, outline, change_summary: 'Initial outline', created_by: user.id });
+    if (versionError) throw versionError;
+    await supabase.from('audit_logs').insert({ user_id: user.id, entity_type: 'masterclass', entity_id: masterclass.id, action: 'OUTLINE_CREATED', metadata: { model, targetDurationMinutes, version: 1 } });
+    return ok({ ...masterclass, outline, model, version: 1, persisted: true }, { status: 201 });
   } catch (error) {
     console.error('[masterclass create]', error);
     return fail('Masterclass creation failed', 'Masterclass outline create/save nahi ho saka.', 500, error instanceof Error ? error.message : error);
