@@ -1,80 +1,69 @@
-# Shooting AI Content & Coaching OS
+# Shooting OS
 
-An AI-assisted operating system designed to turn a shooting expert's expertise, experience, and knowledge into a repeatable content and coaching system. This is a production-oriented V1 implementation.
+Private, mobile-first content operating system for **M N Rehman**. The product is intentionally single-user: there is no Operator, Father/Operator, Admin, or team-facing product mode.
 
-## Overview
+`docs/PRD.md` and `docs/BUILD_PLAN.md` are the authoritative product and implementation sources.
 
-The Shooting AI Content & Coaching OS is a mobile-first application designed for the primary user (a shooting expert and coach). It serves as the operating layer connecting:
-- **Knowledge & Research**: Structured knowledge base and trend research.
-- **Content Creation**: Idea capture, content planning, AI script generation, and review.
-- **Coaching**: Masterclass building and performance assessment tracking.
-- **Analytics**: Content performance tracking to fuel continuous improvement.
+## Product flow
 
-The system ensures that the AI amplifies the human's real expertise, providing a simple, WhatsApp-like UI for the expert, while handling complex AI tasks and agent orchestration in the backend.
+The main navigation is **Home · Ideas · Plan · Content · Masterclass**. Assist is a contextual action layer rather than a separate operating console.
 
-## Features
+Core workflows now include:
+- idea capture by text or supported browser voice recognition;
+- deterministic content categories, hook patterns, duration checks, status rules, and quality gates;
+- structured Hinglish-ready scripts with section-level editing and version history;
+- explicit approval, shoot scheduling, `Shot Ho Gaya`, optional persisted Shooting Guidance, and teleprompter-lite Shooting View;
+- offline access to previously opened Shooting View scripts;
+- First 10 Videos and 30-topic Series planning with owner-controlled replacement/reordering and selective batch scripting;
+- verified knowledge retrieval, claim validation, and confirmed versioned knowledge corrections;
+- evidence-backed research from explicit source URLs with safe claim, warning, confidence, and source visibility;
+- manual-first trend candidate scoring without pretending to provide live discovery when no search provider is connected;
+- Masterclass outline-first creation, explicit outline approval, lesson generation, lesson review/approval, and version history;
+- in-app completion alerts and structured script copy export.
 
-- **Mobile-First Father UI**: Simple, accessible views (Ghar, Plan, Ideas, Content Review, Help/Assistant) tailored for easy use.
-- **Operator Console**: Comprehensive tools for internal teams to manage Knowledge, Research, Trends, Masterclass content, and Analytics.
-- **Content Lifecycle Management**: Dynamic planning from raw idea capture (text/voice) to script generation, review, and publishing.
-- **AI-Powered Workflows**: Idea and script APIs with claim-validation hooks to prevent hallucinations and maintain the expert's authentic voice.
-- **Provider Abstraction Seams**: Flexible integration for AI models and speech-to-text providers.
-- **Robust Backend**: Powered by Supabase/Postgres with pgvector, Row Level Security (RLS), and audit/agent-run tables.
-- **PWA Ready**: Includes a web manifest for seamless mobile installation.
+## Technical foundations
 
-## Tech Stack
+- Next.js App Router / React / TypeScript
+- Supabase Auth + PostgreSQL + Row Level Security
+- pgvector-backed verified knowledge retrieval
+- pluggable AI provider fallback layer
+- deterministic content-engine and validation modules before AI calls
+- PWA manifest + service worker + offline Shooting View fallback
+- GitHub Actions verification for tests, typecheck, repository verification, and production build
 
-- **Framework**: Next.js (App Router)
-- **Database**: Supabase / PostgreSQL (with pgvector)
-- **Styling**: Tailwind CSS
-- **AI Integrations**: Pluggable AI and speech-to-text abstractions
+## Local setup
 
-## Getting Started
+```bash
+npm ci
+cp .env.example .env.local
+npm run dev
+```
 
-### Prerequisites
-- Node.js 20+
-- A Supabase project
+Do not expose or move server provider secrets into client code. Existing environment values are intentionally outside the repository.
 
-### Run Locally
+## Database
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+Apply migrations in order. Do **not** rewrite migrations that have already been applied.
 
-2. Environment configuration:
-   Copy the example environment file and configure your local settings:
-   ```bash
-   cp .env.example .env.local
-   ```
+Current additive sequence:
+- `0001_initial.sql`
+- `0002_conversations_versions_jobs.sql`
+- `0003_single_owner_model.sql`
+- `0004_creation_and_production_flow.sql`
+- `0005_knowledge_and_progress.sql`
+- `0006_owner_knowledge_updates.sql`
+- `0007_intelligence_versioning_notifications.sql`
+- `0008_in_app_notification_triggers.sql`
 
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
-4. Open your browser to [http://localhost:3000](http://localhost:3000) to view the app. Demo mode works without provider credentials to review UI and core flows safely.
-
-## Production Setup
-
-1. **Database Initialization**: Apply the `supabase/migrations/0001_initial.sql` file in your Supabase SQL editor.
-2. **Configuration**: Set up Auth and Storage in Supabase.
-3. **Environment Variables**: Configure all required Vercel environment variables. **Never expose provider secrets in client code.**
-
-## Audit and Continuation
-
-- `docs/AUDIT_CHECKLIST.md`: Full current-state audit (Done / Partial / Missing / Blocked).
-- `docs/CONTINUATION_PROMPT.md`: Master handoff prompt for driving the product to production quality.
+The legacy role enum/column remains only for migration compatibility; product authorization is single authenticated owner.
 
 ## Verification
-
-To ensure code quality and verify the setup:
 
 ```bash
 npm test
 npm run typecheck
-npm run build
 npm run verify
+npm run build
 ```
 
-*(Note: See `docs/VERIFICATION.md` and `docs/PRODUCTION_HANDOFF.md` for detailed continuation and build steps.)*
+GitHub Actions runs the same verification path on pushed commits. See `docs/IMPLEMENTATION_STATUS.md` for current scope, known constraints, and deliberately deferred external integrations.
