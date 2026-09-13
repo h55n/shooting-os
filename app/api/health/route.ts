@@ -1,0 +1,1 @@
+import {NextResponse} from 'next/server'; export async function GET(){return NextResponse.json({ok:true,service:'shooting-os',demoMode:process.env.NEXT_PUBLIC_DEMO_MODE==='true',timestamp:new Date().toISOString()})}

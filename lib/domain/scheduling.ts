@@ -1,0 +1,3 @@
+import type {ContentItem} from './types';
+export function dailyPlan(items:ContentItem[], date=new Date().toISOString().slice(0,10)){return items.filter(i=>i.status!=='ARCHIVED'&&(!i.scheduled_date||i.scheduled_date<=date)).sort((a,b)=>b.priority-a.priority).slice(0,3)}
+export function dependenciesBlocked(items:ContentItem[], orderedIds:string[]){const byId=new Map(items.map(i=>[i.id,i]));const blocked:string[]=[];orderedIds.forEach((id,index)=>{if(index===0)return;const item=byId.get(id);const prev=byId.get(orderedIds[index-1]);if(item&&prev&&prev.status!=='PUBLISHED'&&prev.status!=='LEARNED')blocked.push(id)});return blocked}

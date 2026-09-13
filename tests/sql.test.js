@@ -1,0 +1,2 @@
+const test=require('node:test'); const assert=require('node:assert/strict'); const fs=require('fs');
+test('schema includes pgvector, RLS and core tables',()=>{const s=fs.readFileSync('supabase/migrations/0001_initial.sql','utf8');for(const x of ['create extension if not exists vector','create table public.content_items','create table public.knowledge_chunks','create or replace function public.match_knowledge','enable row level security','create table public.agent_runs'])assert.ok(s.includes(x),x)});
