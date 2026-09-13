@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getContentItems } from '@/lib/repositories/content';
+import { getUnreadNotifications } from '@/lib/repositories/notifications';
 import { nextActionForStatus, toUserStatus } from '@/lib/domain/status';
 
 export const dynamic = 'force-dynamic';
@@ -9,7 +10,7 @@ const actionPriority: Record<string, number> = {
 };
 
 export default async function HomePage() {
-  const items = await getContentItems(30);
+  const [items, notifications] = await Promise.all([getContentItems(30), getUnreadNotifications(3)]);
   const next = [...items]
     .filter((item) => !['PUBLISHED', 'ANALYZING', 'LEARNED', 'ARCHIVED', 'REJECTED'].includes(item.status))
     .sort((a, b) => (actionPriority[a.status] ?? 8) - (actionPriority[b.status] ?? 8))
@@ -25,6 +26,11 @@ export default async function HomePage() {
         <Link href="/account" aria-label="Settings" className="grid size-11 shrink-0 place-items-center rounded-full bg-card text-[20px] shadow-[var(--shadow-card)]">⚙️</Link>
       </header>
 
+      {notifications.length > 0 && <section className="mb-6 rounded-2xl bg-primary/10 p-4 ring-1 ring-primary/20">
+        <p className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-primary">Ready for you</p>
+        <div className="mt-2 space-y-2">{notifications.map((notice) => <Link key={notice.id} href={notice.href || '/'} className="block rounded-xl bg-card p-3 shadow-[var(--shadow-card)]"><p className="text-[14px] font-bold">{notice.title}</p>{notice.body && <p className="mt-1 text-[12px] leading-5 text-muted-foreground">{notice.body}</p>}</Link>)}</div>
+      </section>}
+
       <section className="mb-7">
         {next.length === 0 ? (
           <div className="rounded-3xl bg-foreground p-6 text-background">
@@ -37,10 +43,7 @@ export default async function HomePage() {
           <div className="space-y-3">
             {next.map((item, index) => (
               <Link key={item.id} href={`/content/${item.id}`} className={index === 0 ? 'block rounded-3xl bg-foreground p-6 text-background shadow-lg' : 'block rounded-2xl bg-card p-5 shadow-[var(--shadow-card)]'}>
-                <div className="flex items-center justify-between gap-2">
-                  <span className={index === 0 ? 'text-[12px] font-bold uppercase tracking-[0.12em] opacity-60' : 'text-[12px] font-bold uppercase tracking-[0.12em] text-muted-foreground'}>{toUserStatus(item.status)}</span>
-                  <span className="text-[13px] font-bold">Open →</span>
-                </div>
+                <div className="flex items-center justify-between gap-2"><span className={index === 0 ? 'text-[12px] font-bold uppercase tracking-[0.12em] opacity-60' : 'text-[12px] font-bold uppercase tracking-[0.12em] text-muted-foreground'}>{toUserStatus(item.status)}</span><span className="text-[13px] font-bold">Open →</span></div>
                 <h2 className={index === 0 ? 'mt-2 text-[22px] font-bold leading-7' : 'mt-2 text-[18px] font-bold leading-6'}>{item.title}</h2>
                 <p className={index === 0 ? 'mt-2 text-[15px] font-semibold opacity-80' : 'mt-2 text-[14px] font-semibold text-primary'}>{nextActionForStatus(item.status)}</p>
               </Link>
