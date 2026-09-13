@@ -2,10 +2,24 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Mic, Square } from 'lucide-react';
 
 type IdeaRow = {
   id: string; raw_input: string; normalized_idea?: string; status: string; source?: string; suggested_reason?: string; created_at?: string;
 };
+
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  start: () => void;
+  stop: () => void;
+  onresult: ((event: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 function proposalOf(row: IdeaRow) {
   try { return row.normalized_idea ? JSON.parse(row.normalized_idea) as Record<string, string> : {}; } catch { return {}; }
@@ -18,6 +32,8 @@ export default function IdeasPage() {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
+  const [recognition, setRecognition] = useState<SpeechRecognitionLike | null>(null);
 
   async function load() {
     const response = await fetch('/api/ideas', { cache: 'no-store' });
@@ -25,6 +41,35 @@ export default function IdeasPage() {
     if (response.ok && body.ok) setIdeas(body.data);
   }
   useEffect(() => { void load(); }, []);
+
+  useEffect(() => {
+    const browser = window as unknown as { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor };
+    const SpeechRecognition = browser.SpeechRecognition || browser.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    const instance = new SpeechRecognition();
+    instance.lang = 'hi-IN';
+    instance.interimResults = true;
+    instance.continuous = false;
+    instance.onresult = (event) => {
+      let transcript = '';
+      for (let index = 0; index < event.results.length; index += 1) transcript += event.results[index][0].transcript;
+      if (transcript.trim()) setText(transcript.trim());
+    };
+    instance.onend = () => setListening(false);
+    instance.onerror = () => { setListening(false); setMessage('Voice capture nahi chala. Idea type karke save kar sakte hain.'); };
+    setRecognition(instance);
+    return () => instance.stop();
+  }, []);
+
+  function toggleVoice() {
+    if (!recognition) {
+      setMessage('Voice capture is browser mein available nahi hai. Text box se idea likhiye.');
+      return;
+    }
+    setMessage(null);
+    if (listening) { recognition.stop(); setListening(false); }
+    else { recognition.start(); setListening(true); }
+  }
 
   async function create(mode: 'capture' | 'suggest') {
     setBusy(mode); setMessage(null);
@@ -64,8 +109,9 @@ export default function IdeasPage() {
 
       {tab === 'owner' ? (
         <section className="mb-6 rounded-2xl bg-card p-4 shadow-[var(--shadow-card)]">
-          <label className="text-[14px] font-bold" htmlFor="idea">I have an idea</label>
-          <textarea id="idea" value={text} onChange={(e) => setText(e.target.value)} placeholder="Jaise: beginners trigger press karte waqt aim kyun bigaad dete hain..." rows={4} className="mt-2 w-full rounded-xl bg-background p-3 text-[16px] leading-6 outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-primary" />
+          <div className="flex items-center justify-between gap-3"><label className="text-[14px] font-bold" htmlFor="idea">I have an idea</label><button type="button" onClick={toggleVoice} className={`flex min-h-11 items-center gap-2 rounded-full px-4 text-[13px] font-bold ${listening ? 'bg-red-100 text-red-700' : 'bg-secondary'}`}>{listening ? <Square size={15} /> : <Mic size={16} />}{listening ? 'Stop' : 'Voice'}</button></div>
+          <textarea id="idea" value={text} onChange={(e) => setText(e.target.value)} placeholder="Bol sakte hain ya type karein: beginners trigger press karte waqt aim kyun bigaad dete hain..." rows={4} className="mt-2 w-full rounded-xl bg-background p-3 text-[16px] leading-6 outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-primary" />
+          {listening && <p className="mt-2 text-[13px] font-semibold text-primary">Sun raha hoon… bolna complete hone par text yahan aa jayega.</p>}
           <button onClick={() => create('capture')} disabled={busy !== null || text.trim().length < 3} className="mt-3 min-h-12 w-full rounded-xl bg-primary px-4 text-[15px] font-bold text-primary-foreground disabled:opacity-40">{busy === 'capture' ? 'Saving…' : 'Save Idea'}</button>
         </section>
       ) : <button onClick={() => create('suggest')} disabled={busy !== null} className="mb-5 min-h-[54px] w-full rounded-2xl bg-foreground px-5 text-[16px] font-bold text-background disabled:opacity-50">{busy === 'suggest' ? 'Finding a strong topic…' : 'Suggest Something'}</button>}
