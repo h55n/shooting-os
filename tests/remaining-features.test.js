@@ -44,11 +44,29 @@ test('masterclass requires outline approval before lesson generation', () => {
   assert.match(page, /Generate Lessons/);
 });
 
-test('series workflow can generate thirty topics and batch script selected topics', () => {
+test('series workflow can generate thirty topics, edit order, and batch selected scripts', () => {
   assert.ok(fs.existsSync('app/series/page.tsx'));
   assert.ok(fs.existsSync('app/api/series/route.ts'));
+  assert.ok(fs.existsSync('app/api/series/[id]/topics/route.ts'));
   assert.ok(fs.existsSync('app/api/series/[id]/scripts/route.ts'));
   const api = read('app/api/series/route.ts');
   assert.match(api, /30/);
   assert.match(api, /series_topics/);
+});
+
+test('content research is source-grounded and persists evidence', () => {
+  assert.ok(fs.existsSync('app/api/content/[id]/research/route.ts'));
+  const src = read('app/api/content/[id]/research/route.ts');
+  assert.match(src, /sourceUrls/);
+  assert.match(src, /research_items/);
+  assert.match(src, /sources/);
+  assert.match(src, /safeClaim/);
+});
+
+test('trend candidates are manual-first and persisted before suggestions', () => {
+  assert.ok(fs.existsSync('app/api/trends/route.ts'));
+  assert.ok(fs.existsSync('app/trends/page.tsx'));
+  const src = read('app/api/trends/route.ts');
+  assert.match(src, /trend_items/);
+  assert.match(src, /relevance/);
 });
