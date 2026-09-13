@@ -1,7 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const ts = require('typescript');
+const tsModule = require('typescript');
+const ts = tsModule.default ?? tsModule;
 
 function loadTs(path) {
   const source = fs.readFileSync(path, 'utf8');
