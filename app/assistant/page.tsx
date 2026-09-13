@@ -1,208 +1,93 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { Mic, ArrowUp, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { ArrowUp, RefreshCw } from 'lucide-react';
 
-type Msg = { role: "user" | "ai"; text: string };
+type AssistAction = { type: 'navigate'; label: string; href: string };
+type Msg = { role: 'user' | 'ai'; text: string; actions?: AssistAction[] };
 
 const chips = [
-  "Aaj kya karna chahiye?",
-  "Ek naya content idea do",
-  "Trigger control ke baare mein batao",
-  "Masterclass plan kya hai?",
+  'Aaj kya karna chahiye?',
+  'Ek strong content idea do',
+  'Trigger control ke baare mein batao',
+  'Masterclass ka next step kya hai?',
 ];
 
 export default function Help() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  const conversationHistory = useRef<{ role: "user" | "assistant"; content: string }[]>([]);
+  const history = useRef<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const conversationId = useRef<string | undefined>(undefined);
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [msgs, thinking]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs, thinking]);
 
-  const send = async (text: string) => {
+  async function send(text: string) {
     const q = text.trim();
     if (!q || thinking) return;
-
-    setError(null);
-    setInput("");
-    setMsgs((m) => [...m, { role: "user", text: q }]);
-    setThinking(true);
-
-    // Add to history for context
-    conversationHistory.current.push({ role: "user", content: q });
+    setError(null); setInput(''); setThinking(true);
+    setMsgs((current) => [...current, { role: 'user', text: q }]);
+    history.current.push({ role: 'user', content: q });
 
     try {
-      const res = await fetch("/api/assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: q,
-          conversationHistory: conversationHistory.current.slice(-8),
-        }),
+      const response = await fetch('/api/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: q, conversationId: conversationId.current, conversationHistory: history.current.slice(-8) }),
       });
+      const body = await response.json();
+      if (!response.ok || !body.ok) throw new Error(body.userMessage || 'Assist response nahi de saka.');
+      const data = body.data;
+      conversationId.current = data.conversationId;
+      history.current.push({ role: 'assistant', content: data.reply });
+      setMsgs((current) => [...current, { role: 'ai', text: data.reply, actions: data.actions }]);
+    } catch (cause) {
+      history.current.pop();
+      setMsgs((current) => current.slice(0, -1));
+      setError(cause instanceof Error ? cause.message : 'Kuch gadbad ho gayi. Dobara try karein.');
+    } finally { setThinking(false); }
+  }
 
-      const data = await res.json();
-
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error ?? "Server error");
-      }
-
-      const reply = data.reply as string;
-      conversationHistory.current.push({ role: "assistant", content: reply });
-      setMsgs((m) => [...m, { role: "ai", text: reply }]);
-    } catch (e) {
-      const errMsg =
-        e instanceof Error && e.message.includes("fetch")
-          ? "Network error — internet check karein."
-          : "Kuch gadbad ho gayi. Dobara try karein.";
-      setError(errMsg);
-      // Remove the user message that failed
-      conversationHistory.current.pop();
-      setMsgs((m) => m.slice(0, -1));
-    } finally {
-      setThinking(false);
-    }
-  };
-
-  const clearChat = () => {
-    setMsgs([]);
-    setError(null);
-    conversationHistory.current = [];
-  };
+  function clearChat() {
+    setMsgs([]); setError(null); setInput(''); history.current = []; conversationId.current = undefined;
+  }
 
   return (
-    <>
-      <div className="flex min-h-[calc(100dvh-140px)] flex-col -mx-4 -mt-6 px-4 pt-6">
-        {/* Header */}
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <h1 className="page-title">AI Help</h1>
-            <p className="mt-0.5 text-[14px] text-muted-foreground">
-              M N Rehman ke baare mein sab kuch jaanta hai
-            </p>
-          </div>
-          {msgs.length > 0 && (
-            <button
-              onClick={clearChat}
-              className="flex items-center gap-1.5 rounded-full bg-card px-3 py-2 text-[13px] text-muted-foreground shadow-[0_0_0_1px_rgba(0,0,0,0.08)] active:scale-95 transition-transform"
-            >
-              <RefreshCw size={13} />
-              Naya
-            </button>
-          )}
+    <div className="flex min-h-[calc(100dvh-140px)] flex-col -mx-4 -mt-6 px-4 pt-6">
+      <div className="mb-5 flex items-center justify-between">
+        <div>
+          <h1 className="page-title">Assist</h1>
+          <p className="mt-0.5 text-[14px] text-muted-foreground">Verified knowledge + useful next actions</p>
         </div>
-
-        <div className="flex-1 space-y-4 pb-4">
-          {msgs.length === 0 && !thinking && (
-            <div className="rounded-2xl bg-card p-5 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]">
-              <p className="text-[24px]">🤖</p>
-              <p className="mt-2 text-[17px] font-bold leading-snug">
-                Namaskar, Rehman Sahab!
-              </p>
-              <p className="mt-1.5 text-[15px] leading-[24px] text-muted-foreground">
-                Main aapka AI assistant hoon. Aapke shooting career, content ideas, scripts,
-                masterclass planning — sab mein help kar sakta hoon.
-              </p>
-              <p className="mt-3 text-[13px] text-muted-foreground">
-                Hindi, Hinglish, ya English — jaise chahe poochhiye.
-              </p>
-            </div>
-          )}
-
-          {error && (
-            <div className="rounded-xl bg-[#FFF1F0] px-4 py-3 text-[15px] text-[#D92D20]">
-              ⚠️ {error}
-            </div>
-          )}
-
-          {msgs.map((m, i) =>
-            m.role === "user" ? (
-              <div key={i} className="flex justify-end">
-                <p className="max-w-[82%] rounded-2xl bg-foreground px-4 py-3 text-[17px] leading-[26px] text-background">
-                  {m.text}
-                </p>
-              </div>
-            ) : (
-              <div key={i}>
-                <p className="mb-1.5 text-[12px] font-semibold text-muted-foreground">
-                  🤖 Shooter AI
-                </p>
-                <div className="max-w-[90%] rounded-2xl bg-card px-4 py-3 text-[17px] leading-[28px] shadow-[0_0_0_1px_rgba(0,0,0,0.08)]">
-                  {m.text.split("\n").map((line, li) => (
-                    <p key={li} className={li > 0 ? "mt-2" : ""}>
-                      {line}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            ),
-          )}
-
-          {thinking && (
-            <div>
-              <p className="mb-1.5 text-[12px] font-semibold text-muted-foreground">
-                🤖 Shooter AI
-              </p>
-              <p className="inline-flex items-center gap-2 rounded-2xl bg-card px-4 py-3 text-[16px] text-muted-foreground shadow-[0_0_0_1px_rgba(0,0,0,0.08)]">
-                <span className="size-2 animate-bounce rounded-full bg-[#0F7FFF]" style={{ animationDelay: "0ms" }} />
-                <span className="size-2 animate-bounce rounded-full bg-[#0F7FFF]" style={{ animationDelay: "150ms" }} />
-                <span className="size-2 animate-bounce rounded-full bg-[#0F7FFF]" style={{ animationDelay: "300ms" }} />
-              </p>
-            </div>
-          )}
-          <div ref={endRef} />
-        </div>
+        {msgs.length > 0 && <button onClick={clearChat} className="flex min-h-11 items-center gap-1.5 rounded-full bg-card px-3 text-[13px] text-muted-foreground shadow-[0_0_0_1px_rgba(0,0,0,0.08)]"><RefreshCw size={13} />Naya</button>}
       </div>
 
-      {/* Input bar */}
-      <div className="fixed bottom-[calc(76px+env(safe-area-inset-bottom))] left-1/2 z-30 w-full max-w-[520px] -translate-x-1/2 bg-background px-4 pb-2 pt-2">
-        {msgs.length === 0 && (
-          <div className="no-scrollbar -mx-4 mb-2.5 flex gap-2 overflow-x-auto px-4">
-            {chips.map((c) => (
-              <button
-                key={c}
-                onClick={() => send(c)}
-                className="card-surface min-h-[40px] shrink-0 rounded-full px-4 text-[14px] active:scale-95 transition-transform"
-              >
-                {c}
-              </button>
-            ))}
+      <div className="flex-1 space-y-4 pb-36">
+        {msgs.length === 0 && !thinking && <div className="rounded-2xl bg-card p-5 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]"><p className="text-[17px] font-bold">Namaskar, Rehman Sahab.</p><p className="mt-2 text-[15px] leading-6 text-muted-foreground">Ideas, scripts, planning, masterclass aur verified shooting knowledge mein help kar sakta hoon. Personal facts sirf verified knowledge se use honge.</p></div>}
+        {error && <div className="rounded-xl bg-[#FFF1F0] px-4 py-3 text-[15px] text-[#D92D20]">⚠️ {error}</div>}
+        {msgs.map((msg, index) => msg.role === 'user' ? (
+          <div key={index} className="flex justify-end"><p className="max-w-[82%] rounded-2xl bg-foreground px-4 py-3 text-[17px] leading-[26px] text-background">{msg.text}</p></div>
+        ) : (
+          <div key={index}>
+            <p className="mb-1.5 text-[12px] font-semibold text-muted-foreground">Assist</p>
+            <div className="max-w-[92%] rounded-2xl bg-card px-4 py-3 text-[17px] leading-[28px] shadow-[0_0_0_1px_rgba(0,0,0,0.08)]">{msg.text.split('\n').map((line, i) => <p key={i} className={i ? 'mt-2' : ''}>{line}</p>)}</div>
+            {msg.actions?.length ? <div className="mt-2 flex flex-wrap gap-2">{msg.actions.map((action) => <Link key={action.href} href={action.href} className="min-h-11 rounded-full bg-secondary px-4 py-3 text-[13px] font-bold">{action.label}</Link>)}</div> : null}
           </div>
-        )}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            send(input);
-          }}
-          className="flex items-center gap-2 rounded-2xl bg-card p-2 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]"
-        >
-          <button
-            type="button"
-            className="grid size-[48px] shrink-0 place-items-center rounded-full text-muted-foreground"
-          >
-            <Mic size={22} />
-          </button>
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Kuch bhi poochhiye..."
-            className="min-h-[48px] flex-1 bg-transparent text-[17px] outline-none"
-            disabled={thinking}
-          />
-          <button
-            type="submit"
-            className="grid size-[48px] shrink-0 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-40 transition-transform active:scale-95"
-            disabled={!input.trim() || thinking}
-          >
-            <ArrowUp size={22} />
-          </button>
+        ))}
+        {thinking && <div className="inline-flex gap-2 rounded-2xl bg-card px-4 py-3 text-muted-foreground shadow-[0_0_0_1px_rgba(0,0,0,0.08)]"><span className="size-2 animate-bounce rounded-full bg-primary" /><span className="size-2 animate-bounce rounded-full bg-primary [animation-delay:150ms]" /><span className="size-2 animate-bounce rounded-full bg-primary [animation-delay:300ms]" /></div>}
+        <div ref={endRef} />
+      </div>
+
+      <div className="fixed bottom-[calc(76px+env(safe-area-inset-bottom))] left-1/2 z-30 w-full max-w-[520px] -translate-x-1/2 bg-background px-4 pb-2 pt-2">
+        {msgs.length === 0 && <div className="no-scrollbar -mx-4 mb-2.5 flex gap-2 overflow-x-auto px-4">{chips.map((chip) => <button key={chip} onClick={() => send(chip)} className="card-surface min-h-10 shrink-0 rounded-full px-4 text-[14px]">{chip}</button>)}</div>}
+        <form onSubmit={(event) => { event.preventDefault(); void send(input); }} className="flex items-center gap-2 rounded-2xl bg-card p-2 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]">
+          <input value={input} onChange={(event) => setInput(event.target.value)} placeholder="Kuch poochhiye…" className="min-h-12 flex-1 bg-transparent px-2 text-[17px] outline-none" disabled={thinking} />
+          <button type="submit" className="grid size-12 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-40" disabled={!input.trim() || thinking}><ArrowUp size={22} /></button>
         </form>
       </div>
-    </>
+    </div>
   );
 }
