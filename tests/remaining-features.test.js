@@ -24,7 +24,8 @@ test('ideas supports browser voice capture with text fallback', () => {
 test('shooting view has an offline navigation fallback', () => {
   const sw = read('public/sw.js');
   assert.match(sw, /offline-shoot/);
-  assert.match(sw, /\/content\//);
+  assert.match(sw, /shootingMatch/);
+  assert.match(sw, /Response\.redirect/);
   assert.ok(fs.existsSync('app/offline-shoot/page.tsx'));
 });
 
