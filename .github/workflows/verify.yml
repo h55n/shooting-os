@@ -28,13 +28,29 @@ jobs:
         run: npm ci
 
       - name: Run tests
+        id: tests
+        continue-on-error: true
         run: npm test
 
       - name: Typecheck
+        id: typecheck
+        continue-on-error: true
         run: npm run typecheck
 
       - name: Repository verification
+        id: verify
+        continue-on-error: true
         run: npm run verify
 
       - name: Production build
+        id: build
+        continue-on-error: true
         run: npm run build
+
+      - name: Fail if any verification step failed
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.verify.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
