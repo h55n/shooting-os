@@ -10,7 +10,7 @@ export default function MasterclassPage() {
   const [topic, setTopic] = useState('');
   const [duration, setDuration] = useState(120);
   const [created, setCreated] = useState<{ id: string; outline: Outline; persisted: boolean } | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   async function load() {
@@ -21,7 +21,7 @@ export default function MasterclassPage() {
   useEffect(() => { void load(); }, []);
 
   async function createOutline() {
-    setBusy(true); setMessage(null);
+    setBusy('create'); setMessage(null);
     try {
       const response = await fetch('/api/masterclasses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic, targetDurationMinutes: duration }) });
       const body = await response.json();
@@ -30,14 +30,38 @@ export default function MasterclassPage() {
       if (body.data.persisted) { setTopic(''); await load(); }
       else setMessage('Demo outline ready. Database connected hone par ye persist hoga.');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Outline create nahi ho saka.'); }
-    finally { setBusy(false); }
+    finally { setBusy(null); }
+  }
+
+  async function approveOutline(id: string) {
+    setBusy(`approve:${id}`); setMessage(null);
+    try {
+      const response = await fetch(`/api/masterclasses/${id}/approve`, { method: 'POST' });
+      const body = await response.json();
+      if (!response.ok || !body.ok) throw new Error(body.userMessage || 'Outline approve nahi ho saka.');
+      setMessage('Outline approved. Ab lessons generate kiye ja sakte hain.');
+      await load();
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Outline approve nahi ho saka.'); }
+    finally { setBusy(null); }
+  }
+
+  async function generateLessons(id: string) {
+    setBusy(`lessons:${id}`); setMessage(null);
+    try {
+      const response = await fetch(`/api/masterclasses/${id}/lessons`, { method: 'POST' });
+      const body = await response.json();
+      if (!response.ok || !body.ok) throw new Error(body.userMessage || 'Lessons generate nahi ho sake.');
+      setMessage(`${body.data.lessonCount ?? body.data.lessons?.length ?? 0} lesson drafts ready.`);
+      await load();
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Lessons generate nahi ho sake.'); }
+    finally { setBusy(null); }
   }
 
   return (
     <div>
       <header className="mb-5">
         <h1 className="text-[30px] font-bold tracking-tight">Masterclass</h1>
-        <p className="mt-1 text-[15px] text-muted-foreground">Outline pehle. Lessons approval ke baad.</p>
+        <p className="mt-1 text-[15px] text-muted-foreground">Outline pehle. Approval ke baad hi lessons.</p>
       </header>
 
       <section className="mb-6 rounded-2xl bg-card p-5 shadow-[var(--shadow-card)]">
@@ -47,15 +71,21 @@ export default function MasterclassPage() {
         <select value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="mt-1 min-h-[50px] w-full rounded-xl bg-background px-3 text-[15px] ring-1 ring-black/10">
           <option value={60}>1 hour</option><option value={120}>2 hours</option><option value={180}>3 hours</option><option value={240}>4 hours</option>
         </select>
-        <button onClick={createOutline} disabled={busy || topic.trim().length < 3} className="mt-4 min-h-[52px] w-full rounded-xl bg-primary px-4 text-[15px] font-bold text-primary-foreground disabled:opacity-40">{busy ? 'Building outline…' : 'Create Outline'}</button>
+        <button onClick={createOutline} disabled={busy !== null || topic.trim().length < 3} className="mt-4 min-h-[52px] w-full rounded-xl bg-primary px-4 text-[15px] font-bold text-primary-foreground disabled:opacity-40">{busy === 'create' ? 'Building outline…' : 'Create Outline'}</button>
       </section>
 
       {message && <p className="mb-4 rounded-xl bg-secondary p-3 text-[14px]">{message}</p>}
-      {created && <OutlineCard outline={created.outline} />}
+      {created && !created.persisted && <OutlineCard outline={created.outline} />}
 
       <section className="mt-7 pb-4">
         <h2 className="mb-3 text-[18px] font-bold">Your masterclasses</h2>
-        {items.length === 0 ? <div className="rounded-2xl bg-card p-6 text-center text-[14px] text-muted-foreground shadow-[var(--shadow-card)]">No masterclass yet. Start with a topic above.</div> : <div className="space-y-3">{items.map((item) => <article key={item.id} className="rounded-2xl bg-card p-5 shadow-[var(--shadow-card)]"><div className="flex items-center justify-between gap-3"><div><p className="text-[17px] font-bold">{item.title}</p><p className="mt-1 text-[13px] text-muted-foreground">{item.status} · {item.target_duration_minutes ? `${item.target_duration_minutes} min` : 'Duration flexible'}</p></div><span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold">Outline</span></div>{item.outline && <details className="mt-3"><summary className="cursor-pointer text-[14px] font-bold text-primary">View structure</summary><div className="mt-3"><OutlineCard outline={item.outline} compact /></div></details>}</article>)}</div>}
+        {items.length === 0 ? <div className="rounded-2xl bg-card p-6 text-center text-[14px] text-muted-foreground shadow-[var(--shadow-card)]">No masterclass yet. Start with a topic above.</div> : <div className="space-y-3">{items.map((item) => <article key={item.id} className="rounded-2xl bg-card p-5 shadow-[var(--shadow-card)]">
+          <div className="flex items-center justify-between gap-3"><div><p className="text-[17px] font-bold">{item.title}</p><p className="mt-1 text-[13px] text-muted-foreground">{item.status.replaceAll('_', ' ')} · {item.target_duration_minutes ? `${item.target_duration_minutes} min` : 'Duration flexible'}</p></div><span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold">Masterclass</span></div>
+          {item.outline && <details className="mt-3"><summary className="cursor-pointer text-[14px] font-bold text-primary">View structure</summary><div className="mt-3"><OutlineCard outline={item.outline} compact /></div></details>}
+          {item.status === 'outline_review' && <button onClick={() => approveOutline(item.id)} disabled={busy !== null} className="mt-4 min-h-12 w-full rounded-xl bg-foreground px-4 text-[14px] font-bold text-background disabled:opacity-40">{busy === `approve:${item.id}` ? 'Approving…' : 'Approve Outline'}</button>}
+          {item.status === 'outline_approved' && <button onClick={() => generateLessons(item.id)} disabled={busy !== null} className="mt-4 min-h-12 w-full rounded-xl bg-primary px-4 text-[14px] font-bold text-primary-foreground disabled:opacity-40">{busy === `lessons:${item.id}` ? 'Generating lessons…' : 'Generate Lessons'}</button>}
+          {item.status === 'lessons_ready' && <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-[13px] font-semibold text-emerald-800">Lesson drafts ready. Outline remains the approved source structure.</div>}
+        </article>)}</div>}
       </section>
     </div>
   );
