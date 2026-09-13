@@ -12,12 +12,13 @@ const labels: Record<EditableSection, string> = {
 };
 
 export function ScriptReviewClient({
-  contentId, initialStatus, initialScript, scheduledDate,
+  contentId, initialStatus, initialScript, scheduledDate, guidanceEnabled = false,
 }: {
   contentId: string;
   initialStatus: string;
   initialScript: ScriptDocument;
   scheduledDate?: string;
+  guidanceEnabled?: boolean;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState(initialStatus);
@@ -27,7 +28,7 @@ export function ScriptReviewClient({
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [shootDate, setShootDate] = useState(scheduledDate ?? '');
-  const [guidance, setGuidance] = useState(false);
+  const [guidance, setGuidance] = useState(guidanceEnabled);
 
   async function api(path: string, init: RequestInit) {
     setMessage(null);
@@ -84,6 +85,18 @@ export function ScriptReviewClient({
     finally { setBusy(null); }
   }
 
+  async function toggleGuidance() {
+    const next = !guidance;
+    setBusy('guidance');
+    try {
+      await api(`/api/content/${contentId}/guidance`, { method: 'PATCH', body: JSON.stringify({ enabled: next }) });
+      setGuidance(next);
+      setMessage(next ? 'Shooting guidance on.' : 'Shooting guidance off.');
+      router.refresh();
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Guidance setting save nahi ho saki.'); }
+    finally { setBusy(null); }
+  }
+
   const sections = (Object.keys(labels) as EditableSection[]).filter((key) => script[key]?.trim());
 
   return (
@@ -116,8 +129,8 @@ export function ScriptReviewClient({
       </div>
 
       <section className="mt-4 rounded-2xl bg-card p-5 shadow-[var(--shadow-card)]">
-        <button onClick={() => setGuidance((value) => !value)} className="flex min-h-12 w-full items-center justify-between text-left">
-          <span><strong className="block text-[16px]">Shooting Guidance</strong><span className="text-[13px] text-muted-foreground">Beginner-friendly camera & delivery help</span></span>
+        <button onClick={toggleGuidance} disabled={busy !== null} className="flex min-h-12 w-full items-center justify-between text-left disabled:opacity-50">
+          <span><strong className="block text-[16px]">Shooting Guidance</strong><span className="text-[13px] text-muted-foreground">Optional beginner-friendly camera & delivery help</span></span>
           <span className={`h-7 w-12 rounded-full p-1 transition ${guidance ? 'bg-primary' : 'bg-black/10'}`}><span className={`block size-5 rounded-full bg-white transition-transform ${guidance ? 'translate-x-5' : ''}`} /></span>
         </button>
         {guidance && <div className="mt-3 border-t border-black/5 pt-3 text-[15px] leading-6 text-muted-foreground">Phone eye-level par rakhein. Frame chest-up rakhein. Hook seedha camera mein bolein, phir natural pause. Demonstration ho toh alag close-up take lein.</div>}
