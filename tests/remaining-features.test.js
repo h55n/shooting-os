@@ -29,6 +29,13 @@ test('shooting view has an offline navigation fallback', () => {
   assert.ok(fs.existsSync('app/offline-shoot/page.tsx'));
 });
 
+test('optional shooting guidance persists per content item', () => {
+  assert.ok(fs.existsSync('app/api/content/[id]/guidance/route.ts'));
+  const client = read('components/ScriptReviewClient.tsx');
+  assert.match(client, /\/guidance/);
+  assert.match(client, /shooting_guidance|guidanceEnabled/);
+});
+
 test('masterclass requires outline approval before lesson generation', () => {
   assert.ok(fs.existsSync('app/api/masterclasses/[id]/approve/route.ts'));
   assert.ok(fs.existsSync('app/api/masterclasses/[id]/lessons/route.ts'));
