@@ -40,7 +40,7 @@ export async function GET() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return fail('Unauthorized', 'Pehle sign in karein.', 401);
-    const { data, error } = await supabase.from('masterclasses').select('id,title,status,audience,learning_outcome,target_duration_minutes,outline,approved_at,created_at').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('masterclasses').select('id,title,status,audience,learning_outcome,target_duration_minutes,outline,approved_at,created_at,masterclass_modules(id,title,order,learning_objective,estimated_minutes,status,masterclass_sections(id,title,content,learning_objective,demonstration,practice,status,version))').order('created_at', { ascending: false });
     if (error) throw error;
     return ok(data ?? []);
   } catch (error) { return fail('Masterclasses failed', 'Masterclasses load nahi ho sake.', 500, error instanceof Error ? error.message : error); }
