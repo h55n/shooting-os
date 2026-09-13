@@ -36,12 +36,16 @@ test('optional shooting guidance persists per content item', () => {
   assert.match(client, /shooting_guidance|guidanceEnabled/);
 });
 
-test('masterclass requires outline approval before lesson generation', () => {
+test('masterclass requires outline approval and versioned lesson review', () => {
   assert.ok(fs.existsSync('app/api/masterclasses/[id]/approve/route.ts'));
   assert.ok(fs.existsSync('app/api/masterclasses/[id]/lessons/route.ts'));
+  assert.ok(fs.existsSync('app/api/masterclasses/sections/[id]/route.ts'));
+  const section = read('app/api/masterclasses/sections/[id]/route.ts');
+  assert.match(section, /masterclass_section_versions/);
   const page = read('app/masterclass/page.tsx');
   assert.match(page, /Approve Outline/);
   assert.match(page, /Generate Lessons/);
+  assert.match(page, /Approve Lesson/);
 });
 
 test('series workflow can generate thirty topics, edit order, and batch selected scripts', () => {
