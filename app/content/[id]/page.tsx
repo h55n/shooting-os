@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getContentItem } from '@/lib/repositories/content';
 import { ScriptReviewClient } from '@/components/ScriptReviewClient';
 import { ResearchPanel } from '@/components/ResearchPanel';
+import { CopyScriptButton } from '@/components/CopyScriptButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,10 @@ export default async function ContentDetailPage({ params }: { params: Promise<{ 
       <div className="mb-5">
         <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{item.categoryId || 'Content'}</p>
         <h1 className="mt-1 text-[28px] font-bold leading-tight tracking-tight">{item.title}</h1>
-        <p className="mt-2 text-[14px] text-muted-foreground">Version {item.scriptVersion ?? 1} · {item.contentType}</p>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <p className="text-[14px] text-muted-foreground">Version {item.scriptVersion ?? 1} · {item.contentType}</p>
+          {item.script && <CopyScriptButton title={item.title} script={item.script} />}
+        </div>
       </div>
       {item.script ? (
         <>
