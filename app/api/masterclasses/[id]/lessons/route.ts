@@ -80,13 +80,30 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     });
 
     const { data: inserted, error: insertError } = await supabase.from('masterclass_sections').insert(rows).select('id,module_id,title,status,version');
-    if (insertError) throw insertError;
+    if (insertError || !inserted) throw new Error(insertError?.message || 'Lesson insert failed');
+
+    const versionRows = inserted.map((section, index) => ({
+      section_id: section.id,
+      version: 1,
+      content: {
+        title: rows[index].title,
+        content: rows[index].content,
+        learningObjective: rows[index].learning_objective,
+        demonstration: rows[index].demonstration,
+        practice: rows[index].practice,
+      },
+      change_summary: 'Initial generated lesson draft',
+      created_by: user.id,
+    }));
+    const { error: versionError } = await supabase.from('masterclass_section_versions').insert(versionRows);
+    if (versionError) throw versionError;
+
     const now = new Date().toISOString();
     const { error: statusError } = await supabase.from('masterclasses').update({ status: 'lessons_ready', updated_at: now }).eq('id', id);
     if (statusError) throw statusError;
-    await supabase.from('audit_logs').insert({ user_id: user.id, entity_type: 'masterclass', entity_id: id, action: 'LESSONS_GENERATED', metadata: { model: response.model, lessonCount: rows.length, verifiedSources: knowledge.length } });
+    await supabase.from('audit_logs').insert({ user_id: user.id, entity_type: 'masterclass', entity_id: id, action: 'LESSONS_GENERATED', metadata: { model: response.model, lessonCount: rows.length, verifiedSources: knowledge.length, version: 1 } });
 
-    return ok({ masterclassId: id, lessons: inserted ?? [], lessonCount: rows.length, model: response.model, persisted: true }, { status: 201 });
+    return ok({ masterclassId: id, lessons: inserted, lessonCount: rows.length, model: response.model, persisted: true }, { status: 201 });
   } catch (error) {
     console.error('[masterclass lessons]', error);
     return fail('Lesson generation failed', 'Lessons generate/save nahi ho sake.', 500, error instanceof Error ? error.message : error);
