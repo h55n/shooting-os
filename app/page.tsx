@@ -53,8 +53,10 @@ export default async function HomePage() {
         <h2 className="mb-3 text-[18px] font-bold">Quick actions</h2>
         <div className="grid grid-cols-2 gap-3">
           <Quick href="/ideas" icon="💡" label="New Idea" />
-          <Quick href="/ideas?mode=suggest" icon="✨" label="Suggest Something" />
-          <Quick href="/masterclass" icon="🎓" label="New Masterclass" />
+          <Quick href="/first-ten" icon="🔟" label="First 10 Videos" />
+          <Quick href="/series" icon="🎬" label="Create Series" />
+          <Quick href="/masterclass" icon="🎓" label="Masterclass" />
+          <Quick href="/trends" icon="📈" label="Worth Making" />
           <Quick href="/assistant" icon="✦" label="Open Assist" />
         </div>
       </section>
