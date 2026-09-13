@@ -8,6 +8,7 @@ export default async function ContentDetailPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const item = await getContentItem(id);
   if (!item) notFound();
+  const guidanceEnabled = Boolean(item.shootingGuidance && item.shootingGuidance.enabled === true);
 
   return (
     <div>
@@ -17,7 +18,7 @@ export default async function ContentDetailPage({ params }: { params: Promise<{ 
         <p className="mt-2 text-[14px] text-muted-foreground">Version {item.scriptVersion ?? 1} · {item.contentType}</p>
       </div>
       {item.script ? (
-        <ScriptReviewClient contentId={item.id} initialStatus={item.status} initialScript={item.script} scheduledDate={item.scheduledDate} />
+        <ScriptReviewClient contentId={item.id} initialStatus={item.status} initialScript={item.script} scheduledDate={item.scheduledDate} guidanceEnabled={guidanceEnabled} />
       ) : (
         <div className="rounded-2xl bg-card p-6 text-center shadow-[var(--shadow-card)]">
           <p className="text-[17px] font-bold">Script abhi ready nahi hai</p>
