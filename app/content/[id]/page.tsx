@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getContentItem } from '@/lib/repositories/content';
 import { ScriptReviewClient } from '@/components/ScriptReviewClient';
+import { ResearchPanel } from '@/components/ResearchPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,10 @@ export default async function ContentDetailPage({ params }: { params: Promise<{ 
         <p className="mt-2 text-[14px] text-muted-foreground">Version {item.scriptVersion ?? 1} · {item.contentType}</p>
       </div>
       {item.script ? (
-        <ScriptReviewClient contentId={item.id} initialStatus={item.status} initialScript={item.script} scheduledDate={item.scheduledDate} guidanceEnabled={guidanceEnabled} />
+        <>
+          <ScriptReviewClient contentId={item.id} initialStatus={item.status} initialScript={item.script} scheduledDate={item.scheduledDate} guidanceEnabled={guidanceEnabled} />
+          <ResearchPanel contentId={item.id} />
+        </>
       ) : (
         <div className="rounded-2xl bg-card p-6 text-center shadow-[var(--shadow-card)]">
           <p className="text-[17px] font-bold">Script abhi ready nahi hai</p>
