@@ -17,10 +17,7 @@ export interface ContentCategory {
 }
 
 const core = (id: ContentCategoryId, name: string, description: string, hookFamilies: string[], visualDefaults: string[]): ContentCategory => ({
-  id,
-  name,
-  description,
-  bestFor: [name],
+  id, name, description, bestFor: [name],
   requiredBlocks: ['hook', 'mainPoint', 'takeaway'],
   optionalBlocks: ['setup', 'storyOrExample', 'cta'],
   hookFamilies,
@@ -47,4 +44,25 @@ export const CONTENT_CATEGORIES: ContentCategory[] = [
 
 export function getContentCategory(id: ContentCategoryId): ContentCategory | undefined {
   return CONTENT_CATEGORIES.find((category) => category.id === id);
+}
+
+/** Cheap deterministic first-pass classification. AI may refine only when ambiguous. */
+export function inferContentCategory(text: string): ContentCategoryId {
+  const value = text.toLowerCase();
+  const rules: Array<[RegExp, ContentCategoryId]> = [
+    [/mistake|galti|wrong|avoid/, 'common-mistake'],
+    [/myth|misconception|sach nahi|belief/, 'myth'],
+    [/competition|match|pressure|tournament/, 'competition-story'],
+    [/story|journey|meri kahani|experience/, 'personal-story'],
+    [/mental|mindset|focus|pressure|confidence/, 'mental-performance'],
+    [/career|start shooting|path|academy|begin kaise/, 'pathway'],
+    [/equipment|rifle|pistol|setup|gear/, 'equipment-setup'],
+    [/compare|vs\.?|difference|better/, 'comparison'],
+    [/show|demonstrat|stance|grip|trigger|aim/, 'demonstration'],
+    [/why|kaise|how|what|question|\?/, 'faq'],
+    [/problem|fix|solution|improve/, 'problem-solution'],
+    [/tip|quick|one thing/, 'quick-tip'],
+    [/opinion|i think|mera maanna|expert/, 'expert-take'],
+  ];
+  return rules.find(([pattern]) => pattern.test(value))?.[1] ?? 'beginner-education';
 }

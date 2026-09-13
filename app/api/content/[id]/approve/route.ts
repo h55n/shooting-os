@@ -1,139 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/auth/server';
 import { isSupabaseConfigured } from '@/lib/db/supabase';
-import { canTransitionTo } from '@/lib/domain/status';
+import { fail, ok } from '@/lib/api/response';
 
-const ApproveSchema = z.object({
-  notes: z.string().max(1000).optional(),
-});
+const ApproveSchema = z.object({ notes: z.string().max(1000).optional() });
 
-/**
- * POST /api/content/[id]/approve
- *
- * Server-side approval enforcement. Not just a UI action.
- * Records who approved, when, and creates audit log.
- * NO AI agent can call this — only authenticated human user.
- */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const parsed = ApproveSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) return fail('Invalid input', 'Approval note valid nahi hai.', 400);
+  if (!isSupabaseConfigured()) return ok({ id, newStatus: 'APPROVED', approvedAt: new Date().toISOString(), persisted: false }, undefined, { demoMode: true });
 
   try {
-    const body = await request.json().catch(() => ({}));
-    const parsed = ApproveSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
-    }
-
-    // Demo mode response
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json({
-        ok: true,
-        demoMode: true,
-        message: 'Demo mode: Approval simulated. Real data ke liye Supabase configure karein.',
-        newStatus: 'APPROVED',
-        approvedAt: new Date().toISOString(),
-      });
-    }
-
-    // Real mode: require authentication
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized', hindiError: 'Pehle sign in karein.' },
-        { status: 401 }
-      );
-    }
-
-    // Get current content item
-    const { data: contentItem, error: fetchError } = await supabase
-      .from('content_items')
-      .select('id, status, title')
-      .eq('id', id)
-      .single();
-
-    if (fetchError || !contentItem) {
-      return NextResponse.json({ error: 'Content item not found' }, { status: 404 });
-    }
-
-    // Validate state transition
-    const currentStatus = contentItem.status as string;
-    const targetStatus = 'APPROVED';
-
-    if (!canTransitionTo(currentStatus as never, targetStatus as never)) {
-      return NextResponse.json(
-        {
-          error: 'Invalid state transition',
-          hindiError: `Abhi "${currentStatus}" status mein hai. Approve nahi ho sakta.`,
-          currentStatus,
-          targetStatus,
-        },
-        { status: 422 }
-      );
-    }
-
-    // Update status
-    const { error: updateError } = await supabase
-      .from('content_items')
-      .update({
-        status: targetStatus,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    // Update script record
-    await supabase
-      .from('scripts')
-      .update({
-        status: 'approved',
-        approved_by: user.id,
-      })
-      .eq('content_item_id', id)
-      .order('version', { ascending: false })
-      .limit(1);
-
-    // Write audit log
-    await supabase.from('audit_logs').insert({
-      user_id: user.id,
-      entity_type: 'content_item',
-      entity_id: id,
-      action: 'APPROVED',
-      metadata: {
-        previousStatus: currentStatus,
-        newStatus: targetStatus,
-        notes: parsed.data.notes,
-        approvedAt: new Date().toISOString(),
-      },
+    if (!user) return fail('Unauthorized', 'Pehle sign in karein.', 401);
+    const { data, error } = await supabase.rpc('approve_content', {
+      p_content_id: id,
+      p_user_id: user.id,
+      p_notes: parsed.data.notes ?? null,
     });
-
-    return NextResponse.json({
-      ok: true,
-      id,
-      previousStatus: currentStatus,
-      newStatus: targetStatus,
-      approvedBy: user.id,
-      approvedAt: new Date().toISOString(),
-    });
+    if (error) {
+      if (error.message.includes('CONTENT_NOT_FOUND')) return fail('Content not found', 'Content nahi mila.', 404);
+      if (error.message.includes('INVALID_APPROVAL_STATE')) return fail('Invalid state', 'Ye script abhi approve nahi ho sakta.', 422);
+      throw error;
+    }
+    return ok({ ...data, persisted: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[approve API] Error:', message);
-    return NextResponse.json(
-      {
-        error: 'Approval failed',
-        hindiError: 'Approve nahi ho saka. Dobara try karein.',
-        details: process.env.NODE_ENV === 'development' ? message : undefined,
-      },
-      { status: 500 }
-    );
+    console.error('[approve]', error);
+    return fail('Approval failed', 'Approve save nahi ho saka. Dobara try karein.', 500, error instanceof Error ? error.message : error);
   }
 }
