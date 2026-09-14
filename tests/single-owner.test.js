@@ -33,3 +33,12 @@ test('single-owner migration is additive and replaces role policies', () => {
   assert.match(sql, /auth\.role\(\)\s*=\s*'authenticated'/i);
   assert.doesNotMatch(sql, /disable row level security/i);
 });
+
+test('owner-only RLS migration denies every non-owner authenticated account', () => {
+  const migrationPath = 'supabase/migrations/20260914062640_owner_only_rls.sql';
+  const sql = fs.readFileSync(migrationPath, 'utf8');
+  assert.match(sql, /to authenticated/i);
+  assert.match(sql, /auth\.uid\(\)/i);
+  assert.match(sql, /revoke all.*from anon/i);
+  assert.doesNotMatch(sql, /disable row level security/i);
+});
