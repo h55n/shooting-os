@@ -17,7 +17,7 @@ const tabs = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
-  const isAuthPage = path === "/login" || path === "/signup";
+  const isAuthPage = path === "/login" || path === "/signup" || path === "/reset-password";
   const isShootingView = path.includes("/shoot");
 
   if (isShootingView) return <>{children}</>;

@@ -7,10 +7,12 @@ test('password recovery is available without exposing it to the private app', ()
   const reset = fs.readFileSync('app/reset-password/page.tsx', 'utf8');
   const authClient = fs.readFileSync('lib/auth/client.ts', 'utf8');
   const proxy = fs.readFileSync('proxy.ts', 'utf8');
+  const shell = fs.readFileSync('components/AppShell.tsx', 'utf8');
 
   assert.match(login, /Forgot password/i);
   assert.match(reset, /updatePassword/);
   assert.match(reset, /PASSWORD_RECOVERY/);
   assert.match(authClient, /resetPasswordForEmail/);
   assert.match(proxy, /'\/reset-password'/);
+  assert.match(shell, /path === "\/reset-password"/);
 });
