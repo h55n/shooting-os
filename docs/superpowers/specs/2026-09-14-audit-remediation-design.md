@@ -98,6 +98,13 @@ simple Knowledge readiness panel that counts verified documents and links to the
 knowledge capture/review workflow. Personal memories, accomplishments, and biographical
 claims remain forbidden unless present in verified documents.
 
+Make memory grow from product use through a separate work-context index. Approved scripts,
+scheduled or completed content, and owner-approved planning artifacts are indexed with a
+source type and status. They can help the assistant avoid repeating topics, continue a
+series, and remember production decisions. They never promote draft text or inferred
+biographical claims to verified personal knowledge. A small owner review action is required
+to promote any extracted personal fact into `knowledge_documents` as verified context.
+
 Improve retrieval deterministically before introducing embeddings: normalize Hindi/English
 tokens, include title/content metadata, apply a minimum score, and cap prompt size. Do not
 send the entire knowledge store to a provider.
@@ -124,7 +131,8 @@ in the meantime.
 ## Verification
 
 - Unit tests cover safe return paths, route owner guard placement, provider configuration
-  parsing, provider-error redaction, Markdown sanitization, and retrieval ranking.
+  parsing, provider-error redaction, Markdown sanitization, retrieval ranking, and
+  work-context eligibility rules.
 - Route-level tests demonstrate private AI/service-role endpoints reject anonymous and
   non-owner requests before invoking the provider.
 - Run the repository test suite, type check, lint if configured, and production build.
