@@ -58,6 +58,26 @@ test('series workflow can generate thirty topics, edit order, and batch selected
   assert.match(api, /series_topics/);
 });
 
+test('guided production plans support the approved fixed first ten, flexible series length, and script downloads', () => {
+  const firstTenApi = read('app/api/first-ten/route.ts');
+  const firstTenPage = read('app/first-ten/page.tsx');
+  const seriesApi = read('app/api/series/route.ts');
+  const seriesPage = read('app/series/page.tsx');
+  const migration = read('supabase/migrations/20260914113804_add_series_duration.sql');
+  const download = read('components/DownloadScriptButton.tsx');
+
+  assert.match(firstTenApi, /Introduction: M N Rehman and this channel/);
+  assert.match(firstTenApi, /first_ten_items/);
+  assert.match(firstTenPage, /Replace this video/);
+  assert.match(firstTenPage, /Save replacement/);
+  assert.match(seriesApi, /durationDays/);
+  assert.match(seriesApi, /z\.literal\(7\).*z\.literal\(15\).*z\.literal\(30\)/s);
+  assert.match(seriesPage, /\[7, 15, 30\]/);
+  assert.match(migration, /duration_days/);
+  assert.match(download, /URL\.createObjectURL/);
+  assert.match(download, /text\/plain/);
+});
+
 test('content research is source-grounded and persists evidence', () => {
   assert.ok(fs.existsSync('app/api/content/[id]/research/route.ts'));
   const src = read('app/api/content/[id]/research/route.ts');

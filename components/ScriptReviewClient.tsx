@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ScriptDocument } from '@/lib/ai/schemas';
+import { DownloadScriptButton } from '@/components/DownloadScriptButton';
 
 type EditableSection = 'hook' | 'setup' | 'mainPoint' | 'storyOrExample' | 'takeaway' | 'cta';
 
@@ -12,9 +13,10 @@ const labels: Record<EditableSection, string> = {
 };
 
 export function ScriptReviewClient({
-  contentId, initialStatus, initialScript, scheduledDate, guidanceEnabled = false,
+  contentId, title, initialStatus, initialScript, scheduledDate, guidanceEnabled = false,
 }: {
   contentId: string;
+  title: string;
   initialStatus: string;
   initialScript: ScriptDocument;
   scheduledDate?: string;
@@ -103,7 +105,7 @@ export function ScriptReviewClient({
     <div className="pb-6">
       <div className="mb-5 flex items-center justify-between gap-3">
         <span className="rounded-full bg-secondary px-3 py-1.5 text-[13px] font-bold">{status}</span>
-        <Link href={`/content/${contentId}/shoot`} className="rounded-full bg-foreground px-4 py-2 text-[14px] font-semibold text-background">Shooting View</Link>
+        <div className="flex items-center gap-2"><DownloadScriptButton title={title} script={script} /><Link href={`/content/${contentId}/shoot`} className="rounded-full bg-foreground px-4 py-2 text-[14px] font-semibold text-background">Shooting View</Link></div>
       </div>
 
       <div className="space-y-3">

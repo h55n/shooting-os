@@ -25,7 +25,7 @@ export default async function ContentDetailPage({ params }: { params: Promise<{ 
       </div>
       {item.script ? (
         <>
-          <ScriptReviewClient contentId={item.id} initialStatus={item.status} initialScript={item.script} scheduledDate={item.scheduledDate} guidanceEnabled={guidanceEnabled} />
+          <ScriptReviewClient contentId={item.id} title={item.title} initialStatus={item.status} initialScript={item.script} scheduledDate={item.scheduledDate} guidanceEnabled={guidanceEnabled} />
           <ResearchPanel contentId={item.id} />
         </>
       ) : (
