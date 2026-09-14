@@ -2,7 +2,8 @@
 
 Private, mobile-first content operating system for **M N Rehman**. The product is intentionally single-user: there is no Operator, Father/Operator, Admin, or team-facing product mode.
 
-`docs/PRD.md` and `docs/BUILD_PLAN.md` are the authoritative product and implementation sources.
+Start with the [documentation map](./docs/README.md). `docs/PRD.md` and
+`docs/BUILD_PLAN.md` are the authoritative product and implementation sources.
 
 ## Product flow
 
@@ -25,8 +26,9 @@ Core workflows now include:
 
 - Next.js App Router / React / TypeScript
 - Supabase Auth + PostgreSQL + Row Level Security
-- pgvector-backed verified knowledge retrieval
-- pluggable AI provider fallback layer
+- verified knowledge retrieval with scoped lexical grounding (pgvector is available for
+  a future embedding-backed adapter)
+- pluggable AI provider fallback layer with explicit provider status handling
 - deterministic content-engine and validation modules before AI calls
 - PWA manifest + service worker + offline Shooting View fallback
 - GitHub Actions verification for tests, typecheck, repository verification, and production build
@@ -66,4 +68,6 @@ npm run verify
 npm run build
 ```
 
-GitHub Actions runs the same verification path on pushed commits. See `docs/IMPLEMENTATION_STATUS.md` for current scope, known constraints, and deliberately deferred external integrations.
+GitHub Actions runs the same verification path on pushed commits. See the
+[implementation status](./docs/IMPLEMENTATION_STATUS.md) for current scope, known
+constraints, and deliberately deferred external integrations.
