@@ -5,6 +5,7 @@ import { createClient } from '@/lib/auth/server';
 import { isSupabaseConfigured } from '@/lib/db/supabase';
 import { retrieveKnowledge } from '@/lib/knowledge/retrieval';
 import { fail, ok } from '@/lib/api/response';
+import { ownerErrorResponse, requireOwner } from '@/lib/auth/owner';
 
 const AssistantSchema = z.object({
   message: z.string().trim().min(1).max(2000),
@@ -42,6 +43,8 @@ function knowledgeContext(rows: Awaited<ReturnType<typeof retrieveKnowledge>>) {
 }
 
 export async function POST(request: NextRequest) {
+  let owner;
+  try { owner = await requireOwner(); } catch (error) { return ownerErrorResponse(error); }
   const parsed = AssistantSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return fail('Invalid input', 'Message check karein.', 400, parsed.error.flatten());
 
@@ -66,13 +69,10 @@ export async function POST(request: NextRequest) {
 
     if (isSupabaseConfigured()) {
       const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return fail('Unauthorized', 'Pehle sign in karein.', 401);
-
       if (!conversationId) {
         const { data: conversation, error } = await supabase
           .from('conversations')
-          .insert({ user_id: user.id, title: message.slice(0, 80), context: { surface: 'assist' } })
+          .insert({ user_id: owner.id, title: message.slice(0, 80), context: { surface: 'assist' } })
           .select('id')
           .single();
         if (error || !conversation) throw new Error(error?.message || 'Conversation create failed');

@@ -1,235 +1,77 @@
-/**
- * AI Provider Abstraction Layer
- *
- * Supports: Gemini, Groq, Mistral, Nvidia NIM, Mock
- * Implements fallback logic so if one provider fails, the next one is tried.
- */
+export interface AIGenerateInput { system: string; prompt: string; json?: boolean; maxTokens?: number; temperature?: number; }
+export interface AIGenerateOutput { text: string; model: string; tokens?: number; cost?: number; latencyMs?: number; }
+export interface AIProvider { generate(input: AIGenerateInput): Promise<AIGenerateOutput>; readonly name: string; readonly model: string; }
 
-export interface AIGenerateInput {
-  system: string;
-  prompt: string;
-  json?: boolean;
-  maxTokens?: number;
-  temperature?: number;
+export type AIErrorKind = 'configuration' | 'authentication' | 'rate_limit' | 'unavailable' | 'invalid_response';
+export class AIProviderError extends Error {
+  constructor(readonly kind: AIErrorKind, readonly provider: string, readonly status?: number) { super(`${provider}:${kind}`); }
 }
 
-export interface AIGenerateOutput {
-  text: string;
-  model: string;
-  tokens?: number;
-  cost?: number;
-  latencyMs?: number;
+function providerNames() {
+  const primary = (process.env.AI_PROVIDER || '').trim().toLowerCase();
+  const fallback = (process.env.AI_FALLBACK_PROVIDERS || '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean);
+  const configured = primary === 'fallback' ? ['groq', 'mistral', 'nvidia'] : [primary];
+  return [...new Set([...configured, ...fallback].filter(Boolean))];
 }
 
-export interface AIProvider {
-  generate(input: AIGenerateInput): Promise<AIGenerateOutput>;
-  readonly name: string;
-  readonly model: string;
+function statusError(provider: string, status: number) {
+  if (status === 401 || status === 403) return new AIProviderError('authentication', provider, status);
+  if (status === 429) return new AIProviderError('rate_limit', provider, status);
+  return new AIProviderError('unavailable', provider, status);
 }
 
-// ─── Mock Provider (development only) ────────────────────────────────────────
-
-export class MockAIProvider implements AIProvider {
-  readonly name = 'mock';
-  readonly model = 'mock-v1';
-
-  async generate({ prompt }: AIGenerateInput): Promise<AIGenerateOutput> {
-    await new Promise(r => setTimeout(r, 400));
-    return {
-      model: this.model,
-      tokens: 0,
-      cost: 0,
-      latencyMs: 400,
-      text: JSON.stringify({
-        title: 'Mock Title',
-        coreLesson: 'Mock Lesson',
-        audience: 'Beginners',
-        pillar: 'Education',
-        format: 'reel',
-        hook: 'Mock hook',
-        keyPoints: ['Point 1'],
-        researchNeeded: false,
-        confidence: 'low',
-        relatedContent: [],
-      }),
-    };
-  }
+function safeError(error: unknown, provider: string) {
+  if (error instanceof AIProviderError) return error;
+  return new AIProviderError('unavailable', provider);
 }
-
-// ─── Gemini Provider ───────────────────────────────────────────────────────────
-
-export class GeminiProvider implements AIProvider {
-  readonly name = 'gemini';
-  readonly model: string;
-  private readonly apiKey: string;
-
-  constructor() {
-    this.apiKey = process.env.GEMINI_API_KEY ?? '';
-    this.model = process.env.AI_MODEL ?? 'gemini-1.5-flash';
-  }
-
-  async generate(input: AIGenerateInput): Promise<AIGenerateOutput> {
-    if (!this.apiKey) throw new Error('GEMINI_API_KEY is not configured.');
-    const start = Date.now();
-    const body = {
-      system_instruction: input.system ? { parts: [{ text: input.system }] } : undefined,
-      contents: [{ role: 'user', parts: [{ text: input.prompt }] }],
-      generationConfig: {
-        maxOutputTokens: input.maxTokens ?? 2048,
-        temperature: input.temperature ?? 0.7,
-        ...(input.json ? { responseMimeType: 'application/json' } : {}),
-      },
-    };
-
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(60_000),
-      }
-    );
-
-    if (!res.ok) throw new Error(`Gemini API error ${res.status}: ${await res.text()}`);
-
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    const tokens = data.usageMetadata?.totalTokenCount ?? 0;
-    const cost = (tokens / 1_000_000) * 0.15;
-
-    return { text, model: this.model, tokens, cost, latencyMs: Date.now() - start };
-  }
-}
-
-// ─── OpenAI Compatible Provider Base ───────────────────────────────────────────
 
 abstract class OpenAICompatibleProvider implements AIProvider {
-  abstract readonly name: string;
-  abstract readonly model: string;
-  protected abstract readonly apiKey: string;
-  protected abstract readonly baseUrl: string;
-
+  abstract readonly name: string; abstract readonly model: string; protected abstract readonly apiKey: string; protected abstract readonly baseUrl: string;
   async generate(input: AIGenerateInput): Promise<AIGenerateOutput> {
-    if (!this.apiKey) throw new Error(`${this.name.toUpperCase()}_API_KEY is not configured.`);
-    const start = Date.now();
-    const messages = [];
-    if (input.system) messages.push({ role: 'system', content: input.system });
-    messages.push({ role: 'user', content: input.prompt });
-
-    const body: Record<string, unknown> = {
-      model: this.model,
-      messages,
-      max_tokens: input.maxTokens ?? 2048,
-      temperature: input.temperature ?? 0.7,
-    };
-
-    if (input.json) body.response_format = { type: 'json_object' };
-
-    const res = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30_000),
-    });
-
-    if (!res.ok) throw new Error(`${this.name} API error ${res.status}: ${await res.text()}`);
-
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content ?? '';
-    const tokens = data.usage?.total_tokens ?? 0;
-
-    return { text, model: this.model, tokens, cost: 0, latencyMs: Date.now() - start };
+    if (!this.apiKey) throw new AIProviderError('configuration', this.name);
+    const started = Date.now();
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.apiKey}` },
+        body: JSON.stringify({ model: this.model, messages: [{ role: 'system', content: input.system }, { role: 'user', content: input.prompt }], max_tokens: input.maxTokens ?? 2048, temperature: input.temperature ?? 0.7, ...(input.json ? { response_format: { type: 'json_object' } } : {}) }),
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!response.ok) throw statusError(this.name, response.status);
+      const data = await response.json() as { choices?: Array<{ message?: { content?: string } }>; usage?: { total_tokens?: number } };
+      const text = data.choices?.[0]?.message?.content?.trim();
+      if (!text) throw new AIProviderError('invalid_response', this.name);
+      return { text, model: this.model, tokens: data.usage?.total_tokens, latencyMs: Date.now() - started };
+    } catch (error) { throw safeError(error, this.name); }
   }
 }
 
-// ─── Groq Provider ─────────────────────────────────────────────────────────────
+export class GroqProvider extends OpenAICompatibleProvider { readonly name = 'groq'; readonly model = process.env.GROQ_MODEL || 'openai/gpt-oss-20b'; protected readonly baseUrl = 'https://api.groq.com/openai/v1/chat/completions'; protected readonly apiKey = process.env.GROQ_API_KEY || ''; }
+export class MistralProvider extends OpenAICompatibleProvider { readonly name = 'mistral'; readonly model = process.env.MISTRAL_MODEL || 'mistral-small-latest'; protected readonly baseUrl = 'https://api.mistral.ai/v1/chat/completions'; protected readonly apiKey = process.env.MISTRAL_API_KEY || ''; }
+export class NvidiaNimProvider extends OpenAICompatibleProvider { readonly name = 'nvidia'; readonly model = process.env.NVIDIA_NIM_MODEL || 'meta/llama-3.3-70b-instruct'; protected readonly baseUrl = 'https://integrate.api.nvidia.com/v1/chat/completions'; protected readonly apiKey = process.env.NVIDIA_NIM_API_KEY || ''; }
 
-export class GroqProvider extends OpenAICompatibleProvider {
-  readonly name = 'groq';
-  readonly model = 'llama3-8b-8192';
-  protected readonly baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  protected readonly apiKey = process.env.GROQ_API_KEY ?? '';
-}
-
-// ─── Mistral Provider ──────────────────────────────────────────────────────────
-
-export class MistralProvider extends OpenAICompatibleProvider {
-  readonly name = 'mistral';
-  readonly model = 'open-mistral-7b';
-  protected readonly baseUrl = 'https://api.mistral.ai/v1/chat/completions';
-  protected readonly apiKey = process.env.MISTRAL_API_KEY ?? '';
-}
-
-// ─── Nvidia NIM Provider ───────────────────────────────────────────────────────
-
-export class NvidiaNimProvider extends OpenAICompatibleProvider {
-  readonly name = 'nvidia';
-  readonly model = 'meta/llama3-70b-instruct'; // Default model for Nvidia NIM
-  protected readonly baseUrl = 'https://integrate.api.nvidia.com/v1/chat/completions';
-  protected readonly apiKey = process.env.NVIDIA_NIM_API_KEY ?? '';
-}
-
-// ─── Fallback Provider ─────────────────────────────────────────────────────────
+function providerFor(name: string): AIProvider | null { if (name === 'groq') return new GroqProvider(); if (name === 'mistral') return new MistralProvider(); if (name === 'nvidia') return new NvidiaNimProvider(); return null; }
 
 export class FallbackProvider implements AIProvider {
-  readonly name = 'fallback';
-  readonly model = 'multiple';
-  private providers: AIProvider[];
-
-  constructor(providers: AIProvider[]) {
-    this.providers = providers;
-  }
-
-  async generate(input: AIGenerateInput): Promise<AIGenerateOutput> {
-    const errors: Error[] = [];
+  readonly name = 'fallback'; readonly model = 'multiple';
+  constructor(private readonly providers: AIProvider[]) {}
+  async generate(input: AIGenerateInput) {
+    let last: AIProviderError | undefined;
     for (const provider of this.providers) {
-      try {
-        console.log(`[AI] Attempting generation with ${provider.name}...`);
-        return await provider.generate(input);
-      } catch (err: any) {
-        console.warn(`[AI] Provider ${provider.name} failed: ${err.message}`);
-        errors.push(err);
-      }
+      try { return await provider.generate(input); }
+      catch (error) { last = safeError(error, provider.name); console.warn(`[AI] provider=${provider.name} kind=${last.kind} status=${last.status ?? 'none'}`); }
     }
-    throw new Error(`All AI providers failed. Errors: ${errors.map(e => e.message).join(' | ')}`);
+    throw last ?? new AIProviderError('configuration', 'none');
   }
 }
 
-// ─── Provider Factory ─────────────────────────────────────────────────────────
-
-let _providerInstance: AIProvider | null = null;
-
+let instance: AIProvider | null = null;
 export function getAIProvider(): AIProvider {
-  if (_providerInstance) return _providerInstance;
-
-  const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
-
-  if (isDemoMode) {
-    _providerInstance = new MockAIProvider();
-    return _providerInstance;
-  }
-
-  // Configure Fallback Chain
-  const activeProviders: AIProvider[] = [];
-
-  // Add configured providers to the fallback chain
-  if (process.env.GROQ_API_KEY) activeProviders.push(new GroqProvider());
-  if (process.env.MISTRAL_API_KEY) activeProviders.push(new MistralProvider());
-  if (process.env.NVIDIA_NIM_API_KEY) activeProviders.push(new NvidiaNimProvider());
-  if (process.env.GEMINI_API_KEY) activeProviders.push(new GeminiProvider());
-
-  if (activeProviders.length === 0) {
-    throw new Error('No AI providers configured (keys are missing) and demo mode is off.');
-  }
-
-  _providerInstance = new FallbackProvider(activeProviders);
-  return _providerInstance;
+  if (instance) return instance;
+  const names = providerNames();
+  const providers = names.map(providerFor).filter((provider): provider is AIProvider => provider !== null);
+  if (!providers.length) throw new AIProviderError('configuration', 'none');
+  return (instance = providers.length === 1 ? providers[0] : new FallbackProvider(providers));
 }
-
-export function resetAIProvider() {
-  _providerInstance = null;
-}
+export function resetAIProvider() { instance = null; }
+export function aiReadiness() { return { providers: providerNames().filter((name) => providerFor(name) !== null), demoMode: process.env.NEXT_PUBLIC_DEMO_MODE === 'true' }; }

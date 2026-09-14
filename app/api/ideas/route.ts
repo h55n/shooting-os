@@ -6,6 +6,7 @@ import { getAIProvider } from '@/lib/ai/provider';
 import { fail, ok } from '@/lib/api/response';
 import { inferContentCategory } from '@/lib/content-engine/categories';
 import { retrieveKnowledge } from '@/lib/knowledge/retrieval';
+import { ownerErrorResponse, requireOwner } from '@/lib/auth/owner';
 
 const RequestSchema = z.object({
   mode: z.enum(['capture', 'suggest']).default('capture'),
@@ -29,6 +30,7 @@ function cleanJson(text: string) {
 }
 
 export async function GET() {
+  try { await requireOwner(); } catch (error) { return ownerErrorResponse(error); }
   if (!isSupabaseConfigured()) return ok([] as unknown[], undefined, { demoMode: true });
   try {
     const supabase = await createClient();
@@ -44,6 +46,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  let owner;
+  try { owner = await requireOwner(); } catch (error) { return ownerErrorResponse(error); }
   const parsed = RequestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return fail('Invalid idea', 'Idea thoda detail mein likhein.', 400, parsed.error.flatten());
 
@@ -79,8 +83,6 @@ export async function POST(request: NextRequest) {
     if (!isSupabaseConfigured()) return ok({ id: `demo-${Date.now()}`, proposal, source: mode === 'suggest' ? 'suggested' : 'owner', persisted: false }, undefined, { demoMode: true });
 
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return fail('Unauthorized', 'Pehle sign in karein.', 401);
     const source = mode === 'suggest' ? 'suggested' : 'owner';
     const input = mode === 'suggest' ? proposal.title : rawInput;
     const { data, error } = await supabase.from('ideas').insert({
@@ -90,7 +92,7 @@ export async function POST(request: NextRequest) {
       status: 'new',
       source,
       suggested_reason: mode === 'suggest' ? proposal.why : null,
-      created_by: user.id,
+      created_by: owner.id,
     }).select('id,raw_input,input_type,normalized_idea,status,source,suggested_reason,created_at').single();
     if (error || !data) throw new Error(error?.message || 'Idea insert returned no row');
     return ok({ ...data, proposal, persisted: true }, { status: 201 });

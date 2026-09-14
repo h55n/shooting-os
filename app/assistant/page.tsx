@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowUp, RefreshCw } from 'lucide-react';
+import { MarkdownReply } from '@/components/assistant/markdown-reply';
 
 type AssistAction = { type: 'navigate'; label: string; href: string };
 type Msg = { role: 'user' | 'ai'; text: string; actions?: AssistAction[] };
@@ -73,7 +74,7 @@ export default function Help() {
         ) : (
           <div key={index}>
             <p className="mb-1.5 text-[12px] font-semibold text-muted-foreground">Assist</p>
-            <div className="max-w-[92%] rounded-2xl bg-card px-4 py-3 text-[17px] leading-[28px] shadow-[0_0_0_1px_rgba(0,0,0,0.08)]">{msg.text.split('\n').map((line, i) => <p key={i} className={i ? 'mt-2' : ''}>{line}</p>)}</div>
+            <div className="max-w-[92%] rounded-2xl bg-card px-4 py-3 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]"><MarkdownReply text={msg.text} /></div>
             {msg.actions?.length ? <div className="mt-2 flex flex-wrap gap-2">{msg.actions.map((action) => <Link key={action.href} href={action.href} className="min-h-11 rounded-full bg-secondary px-4 py-3 text-[13px] font-bold">{action.label}</Link>)}</div> : null}
           </div>
         ))}

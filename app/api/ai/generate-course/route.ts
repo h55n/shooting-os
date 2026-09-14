@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAIProvider } from '@/lib/ai/provider';
 import { getServiceClient } from '@/lib/db/supabase';
+import { ownerErrorResponse, requireOwner } from '@/lib/auth/owner';
 
 const GenerateCourseSchema = z.object({
   topic: z.string().min(3).max(200),
@@ -23,6 +24,7 @@ const CourseOutputSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  try { await requireOwner(); } catch (error) { return ownerErrorResponse(error); }
   try {
     const body = await request.json().catch(() => ({}));
     const parsed = GenerateCourseSchema.safeParse(body);
@@ -146,12 +148,11 @@ Return ONLY valid JSON matching this schema:
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[generate-course API] Error:', message);
+    console.error('[generate-course API] request failed');
 
     return NextResponse.json({
       ok: false,
-      error: process.env.NODE_ENV === 'development' ? message : 'Failed to generate course',
+      error: 'Failed to generate course',
     }, { status: 500 });
   }
 }

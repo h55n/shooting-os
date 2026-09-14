@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAIProvider } from '@/lib/ai/provider';
 import { getServiceClient } from '@/lib/db/supabase';
+import { ownerErrorResponse, requireOwner } from '@/lib/auth/owner';
 
 const AnalyzeTrendSchema = z.object({
   rawContent: z.string().min(5).max(5000),
@@ -14,6 +15,7 @@ const TrendOutputSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  try { await requireOwner(); } catch (error) { return ownerErrorResponse(error); }
   try {
     const body = await request.json().catch(() => ({}));
     const parsed = AnalyzeTrendSchema.safeParse(body);
@@ -97,12 +99,11 @@ Return ONLY valid JSON matching this schema:
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[analyze-trend API] Error:', message);
+    console.error('[analyze-trend API] request failed');
 
     return NextResponse.json({
       ok: false,
-      error: process.env.NODE_ENV === 'development' ? message : 'Failed to analyze trend',
+      error: 'Failed to analyze trend',
     }, { status: 500 });
   }
 }
