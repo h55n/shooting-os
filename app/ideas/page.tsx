@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mic, Square } from 'lucide-react';
+import { Mic, Square, Trash2 } from 'lucide-react';
 
 type IdeaRow = {
   id: string; raw_input: string; normalized_idea?: string; status: string; source?: string; suggested_reason?: string; created_at?: string;
@@ -97,6 +97,18 @@ export default function IdeasPage() {
     finally { setBusy(null); }
   }
 
+  async function trashIdea(id: string) {
+    if (!window.confirm('Is idea ko Trash mein bhejna hai?')) return;
+    setBusy(id); setMessage(null);
+    try {
+      const response = await fetch('/api/ideas', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      const body = await response.json();
+      if (!response.ok || !body.ok) throw new Error(body.userMessage || 'Idea remove nahi ho saka.');
+      await load();
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Idea remove nahi ho saka.'); }
+    finally { setBusy(null); }
+  }
+
   const visible = useMemo(() => ideas.filter((idea) => (idea.source === 'suggested') === (tab === 'suggested')), [ideas, tab]);
 
   return (
@@ -123,7 +135,7 @@ export default function IdeasPage() {
           return <article key={idea.id} className="rounded-2xl bg-card p-5 shadow-[var(--shadow-card)]">
             <div className="flex items-start justify-between gap-3"><div><p className="text-[12px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{idea.source === 'suggested' ? 'Suggested' : 'My Idea'}</p><h2 className="mt-1 text-[18px] font-bold leading-6">{proposal.title || idea.raw_input}</h2></div><span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold">{idea.status}</span></div>
             {(proposal.why || idea.suggested_reason) && <p className="mt-2 text-[14px] leading-6 text-muted-foreground">{proposal.why || idea.suggested_reason}</p>}
-            <button onClick={() => buildScript(idea.id)} disabled={busy !== null || idea.status === 'converted'} className="mt-4 min-h-12 w-full rounded-xl bg-primary px-4 text-[15px] font-bold text-primary-foreground disabled:opacity-40">{busy === idea.id ? 'Creating script…' : idea.status === 'converted' ? 'Script created' : 'Build Script →'}</button>
+            <div className="mt-4 flex gap-2"><button onClick={() => buildScript(idea.id)} disabled={busy !== null || idea.status === 'converted'} className="min-h-12 flex-1 rounded-xl bg-primary px-4 text-[15px] font-bold text-primary-foreground disabled:opacity-40">{busy === idea.id ? 'Working…' : idea.status === 'converted' ? 'Script created' : 'Build Script →'}</button><button onClick={() => trashIdea(idea.id)} disabled={busy !== null} aria-label="Move idea to Trash" className="grid size-12 place-items-center rounded-xl bg-secondary text-muted-foreground disabled:opacity-40"><Trash2 size={18} /></button></div>
           </article>;
         })}
       </div>

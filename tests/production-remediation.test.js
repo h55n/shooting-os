@@ -52,3 +52,14 @@ test('Assist remains available when grounding or chat persistence is temporarily
   assert.match(route, /conversation persistence unavailable/);
   assert.match(route, /persisted = false/);
 });
+
+test('ideas and content support reversible owner-only trash', () => {
+  const migration = source('supabase/migrations/20260914105233_add_owner_trash_support.sql');
+  const ideas = source('app/api/ideas/route.ts');
+  const content = source('app/api/content/[id]/trash/route.ts');
+  const repository = source('lib/repositories/content.ts');
+  assert.match(migration, /trashed_at/);
+  assert.match(ideas, /export async function DELETE/);
+  assert.match(content, /requireOwner/);
+  assert.match(repository, /trashed_at/);
+});

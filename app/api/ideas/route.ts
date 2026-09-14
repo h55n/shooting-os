@@ -36,12 +36,31 @@ export async function GET() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return fail('Unauthorized', 'Pehle sign in karein.', 401);
-    const { data, error } = await supabase.from('ideas').select('id,raw_input,input_type,normalized_idea,status,source,suggested_reason,created_at').order('created_at', { ascending: false }).limit(100);
+    const { data, error } = await supabase.from('ideas').select('id,raw_input,input_type,normalized_idea,status,source,suggested_reason,created_at').is('trashed_at', null).order('created_at', { ascending: false }).limit(100);
     if (error) throw error;
     return ok(data ?? []);
   } catch (error) {
     console.error('[ideas GET]', error);
     return fail('Ideas failed', 'Ideas load nahi ho sake.', 500, error instanceof Error ? error.message : error);
+  }
+}
+
+const TrashSchema = z.object({ id: z.string().uuid(), restore: z.boolean().default(false) });
+
+export async function DELETE(request: NextRequest) {
+  let owner;
+  try { owner = await requireOwner(); } catch (error) { return ownerErrorResponse(error); }
+  const parsed = TrashSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return fail('Invalid idea', 'Idea select karein.', 400);
+  if (!isSupabaseConfigured()) return ok({ id: parsed.data.id, trashed: !parsed.data.restore, persisted: false });
+  try {
+    const supabase = await createClient();
+    const update = parsed.data.restore ? { trashed_at: null, trashed_by: null } : { trashed_at: new Date().toISOString(), trashed_by: owner.id };
+    const { error } = await supabase.from('ideas').update(update).eq('id', parsed.data.id);
+    if (error) throw error;
+    return ok({ id: parsed.data.id, trashed: !parsed.data.restore, persisted: true });
+  } catch {
+    return fail('Idea update failed', 'Idea remove nahi ho saka.', 500);
   }
 }
 
@@ -73,7 +92,7 @@ export async function POST(request: NextRequest) {
           json: true,
           temperature: 0.7,
           maxTokens: 800,
-          system: 'Suggest ONE strong short-form shooting content idea for M N Rehman. Natural, specific, useful, not clickbait. Never invent personal achievements. JSON only.',
+          system: 'Suggest ONE strong short-form content idea for M N Rehman, a precision shooting sports coach. The domain is competitive rifle, pistol, shotgun, athlete development, coaching, safety, technique, mental performance and competition pathways. Never suggest photography, camera lenses, portraits, filmmaking, acting or entertainment unless the owner explicitly asks for that separate domain. Natural, specific, useful, not clickbait. Never invent personal achievements. JSON only.',
           prompt: `Verified knowledge:\n${knowledge.map((item) => item.text).join('\n---\n') || 'No verified personal facts available; use general shooting education only.'}\nReturn {"title":"","coreLesson":"","audience":"","pillar":"Shooting Education","hook":"","why":""}`,
         });
         proposal = ProposalSchema.parse(JSON.parse(cleanJson(response.text)));

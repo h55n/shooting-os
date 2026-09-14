@@ -29,6 +29,7 @@ export async function getContentItems(limit = 50): Promise<ContentSummary[]> {
   const { data, error } = await supabase
     .from('content_items')
     .select('id,title,status,content_type,category_id,scheduled_date,shot_at,updated_at')
+    .is('trashed_at', null)
     .order('updated_at', { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
@@ -50,6 +51,7 @@ export async function getContentItem(id: string): Promise<ContentDetail | null> 
   const { data: row, error } = await supabase
     .from('content_items')
     .select('id,title,status,content_type,category_id,scheduled_date,shot_at,updated_at,brief,shooting_guidance,offline_enabled')
+    .is('trashed_at', null)
     .eq('id', id)
     .single();
   if (error || !row) return null;
@@ -88,6 +90,7 @@ export async function getScheduledContent(): Promise<ContentSummary[]> {
   const { data, error } = await supabase
     .from('content_items')
     .select('id,title,status,content_type,category_id,scheduled_date,shot_at,updated_at')
+    .is('trashed_at', null)
     .not('scheduled_date', 'is', null)
     .order('scheduled_date', { ascending: true })
     .limit(60);
