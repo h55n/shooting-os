@@ -36,6 +36,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const publicRoutes = ['/login', '/api/health', '/auth/callback'];
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
+  const ownerUserId = process.env.OWNER_USER_ID?.trim();
 
   if (!user && !isPublicRoute) {
     if (pathname.startsWith('/api/')) {
@@ -52,6 +53,18 @@ export async function proxy(request: NextRequest) {
   }
 
   if (user) {
+    if (!ownerUserId && process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { ok: false, error: 'OWNER_NOT_CONFIGURED', userMessage: 'Owner account configure nahi hua hai.' },
+        { status: 503 }
+      );
+    }
+    if (ownerUserId && user.id !== ownerUserId) {
+      return NextResponse.json(
+        { ok: false, error: 'OWNER_FORBIDDEN', userMessage: 'Yeh private owner account hai.' },
+        { status: 403 }
+      );
+    }
     response.headers.set('x-user-id', user.id);
     if (pathname === '/login' || pathname.startsWith('/signup')) {
       return NextResponse.redirect(new URL('/', request.url));
