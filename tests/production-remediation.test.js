@@ -37,3 +37,10 @@ test('AI provider honours explicit configuration and never logs provider respons
   assert.doesNotMatch(provider, /await res\.text\(\)/);
   assert.doesNotMatch(provider, /err\.message/);
 });
+
+test('Assist grounds ambiguous terminology in the product shooting domain and never invents biography', () => {
+  const route = source('app/api/assistant/route.ts');
+  assert.match(route, /precision shooting/i);
+  assert.match(route, /without attributing it to M N Rehman/i);
+  assert.match(route, /never describe M N Rehman as an actor/i);
+});
