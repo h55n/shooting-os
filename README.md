@@ -15,12 +15,12 @@ Core workflows now include:
 - structured Hinglish-ready scripts with section-level editing and version history;
 - explicit approval, shoot scheduling, `Shot Ho Gaya`, optional persisted Shooting Guidance, and teleprompter-lite Shooting View;
 - offline access to previously opened Shooting View scripts;
-- First 10 Videos and 30-topic Series planning with owner-controlled replacement/reordering and selective batch scripting;
+- First 10 Videos with owner-controlled per-slot replacement, plus 7-, 15-, or 30-day Series planning with replacement/reordering and selective batch scripting;
 - verified knowledge retrieval, claim validation, and confirmed versioned knowledge corrections;
 - evidence-backed research from explicit source URLs with safe claim, warning, confidence, and source visibility;
 - manual-first trend candidate scoring without pretending to provide live discovery when no search provider is connected;
 - Masterclass outline-first creation, explicit outline approval, lesson generation, lesson review/approval, and version history;
-- in-app completion alerts and structured script copy export.
+- in-app completion alerts and structured script copy/download export.
 
 ## Technical foundations
 
@@ -56,6 +56,9 @@ Current additive sequence:
 - `0006_owner_knowledge_updates.sql`
 - `0007_intelligence_versioning_notifications.sql`
 - `0008_in_app_notification_triggers.sql`
+- `20260914062640_owner_only_rls.sql`
+- `20260914105233_add_owner_trash_support.sql`
+- `20260914113804_add_series_duration.sql`
 
 The legacy role enum/column remains only for migration compatibility; product authorization is single authenticated owner.
 
@@ -64,6 +67,7 @@ The legacy role enum/column remains only for migration compatibility; product au
 ```bash
 npm test
 npm run typecheck
+npm run lint
 npm run verify
 npm run build
 ```

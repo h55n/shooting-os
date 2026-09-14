@@ -5,6 +5,9 @@ node_modules
 coverage
 .DS_Store
 *.log
+.turbo
+tsconfig.tsbuildinfo
+supabase/.temp/
 
 .vercel
 .env*

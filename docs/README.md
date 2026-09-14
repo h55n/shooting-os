@@ -10,15 +10,16 @@
 ## Operations
 
 - [Production handoff and required access](./PRODUCTION_HANDOFF.md)
+- [Deployment guide](./DEPLOYMENT.md)
 - [Current implementation status](./IMPLEMENTATION_STATUS.md)
 - [Verification guide](./VERIFICATION.md)
 - [Audit checklist](./AUDIT_CHECKLIST.md)
 
-## Historical handoffs
+## Historical records
 
 Baseline, build-manifest, phase-status, PR, and dated verification documents record
 prior work. They are intentionally retained for traceability and are not operational
-runbooks.
+runbooks. Start operational work from the current handoff and verification guide.
 
 ## Active engineering work
 

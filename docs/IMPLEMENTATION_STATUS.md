@@ -1,4 +1,4 @@
-# Implementation Status — 2026-09-13
+# Implementation Status — 2026-09-14
 
 `docs/PRD.md` and `docs/BUILD_PLAN.md` remain the authoritative source of truth. This file records the implemented state, not a replacement roadmap.
 
@@ -16,10 +16,10 @@
 - Structured script schema, duration estimation, deterministic quality checks, claim validation.
 - Persistent Idea → Script → section edit/version → approval → schedule → Shooting View → `Shot Ho Gaya` flow.
 - Optional persisted Shooting Guidance.
-- Structured script copy/export.
+- Structured script copy and `.txt` download export.
 - Offline fallback for scripts previously opened in Shooting View.
 - First 10 Videos with persisted progress tied to actual shoot completion.
-- Series: one 30-topic planning pass, replacement, ordering, progress, selective batch scripting rather than generating all 30 scripts blindly.
+- Series: a 7-, 15-, or 30-topic planning pass, replacement, ordering, progress, selective batch scripting rather than generating all scripts blindly.
 
 ### Knowledge, Assist, research, trends
 - pgvector/verified knowledge retrieval remains the grounding layer.
