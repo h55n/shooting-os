@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from '@/lib/auth/client';
@@ -70,6 +71,7 @@ function LoginForm() {
             {loading ? <><span className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />Sign in ho rahe hain...</> : isDemoMode ? 'Andar Jaayein →' : 'Sign In Karein →'}
           </button>
         </form>
+        <Link href="/reset-password" className="mt-4 block text-center text-[14px] font-semibold text-primary">Forgot password?</Link>
         <p className="mt-5 text-center text-[13px] text-muted-foreground">Private owner account only. Public signup disabled.</p>
       </div>
       <p className="mt-6 text-[13px] text-muted-foreground">Shooter Content OS · Private system</p>

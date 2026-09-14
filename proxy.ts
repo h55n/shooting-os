@@ -34,7 +34,7 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
-  const publicRoutes = ['/login', '/api/health', '/auth/callback'];
+  const publicRoutes = ['/login', '/reset-password', '/api/health', '/auth/callback'];
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
   const ownerUserId = process.env.OWNER_USER_ID?.trim();
 

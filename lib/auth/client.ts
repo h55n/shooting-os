@@ -21,6 +21,18 @@ export async function signIn(email: string, password: string) {
   return { data, error };
 }
 
+/** Send a one-time password recovery email. */
+export async function requestPasswordReset(email: string, redirectTo: string) {
+  const supabase = createClient();
+  return supabase.auth.resetPasswordForEmail(email, { redirectTo });
+}
+
+/** Update the password after Supabase verifies a recovery session. */
+export async function updatePassword(password: string) {
+  const supabase = createClient();
+  return supabase.auth.updateUser({ password });
+}
+
 /**
  * Sign out the current user.
  */
