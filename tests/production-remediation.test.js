@@ -36,6 +36,7 @@ test('AI provider honours explicit configuration and never logs provider respons
   assert.match(provider, /AI_FALLBACK_PROVIDERS/);
   assert.doesNotMatch(provider, /await res\.text\(\)/);
   assert.doesNotMatch(provider, /err\.message/);
+  assert.doesNotMatch(provider, /response_format/);
 });
 
 test('Assist grounds ambiguous terminology in the product shooting domain and never invents biography', () => {

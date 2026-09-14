@@ -34,7 +34,9 @@ abstract class OpenAICompatibleProvider implements AIProvider {
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.apiKey}` },
-        body: JSON.stringify({ model: this.model, messages: [{ role: 'system', content: input.system }, { role: 'user', content: input.prompt }], max_tokens: input.maxTokens ?? 2048, temperature: input.temperature ?? 0.7, ...(input.json ? { response_format: { type: 'json_object' } } : {}) }),
+        // Current provider fallbacks do not share a portable JSON-mode switch.
+        // Callers already require JSON in the prompt and validate it with Zod.
+        body: JSON.stringify({ model: this.model, messages: [{ role: 'system', content: input.system }, { role: 'user', content: input.prompt }], max_tokens: input.maxTokens ?? 2048, temperature: input.temperature ?? 0.7 }),
         signal: AbortSignal.timeout(30_000),
       });
       if (!response.ok) throw statusError(this.name, response.status);
