@@ -18,12 +18,12 @@ export default function ResetPasswordPage() {
     const supabase = createClient();
     const code = new URLSearchParams(window.location.search).get('code');
 
-    async function establishRecoverySession() {
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        if (exchangeError) setError('Recovery link invalid ya expire ho gaya hai. Naya link maangein.');
-      }
+    if (code) {
+      window.location.replace(`/auth/callback?code=${encodeURIComponent(code)}`);
+      return;
+    }
 
+    async function establishRecoverySession() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) setMode('update');
     }
