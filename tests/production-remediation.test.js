@@ -44,3 +44,11 @@ test('Assist grounds ambiguous terminology in the product shooting domain and ne
   assert.match(route, /without attributing it to M N Rehman/i);
   assert.match(route, /never describe M N Rehman as an actor/i);
 });
+
+test('Assist remains available when grounding or chat persistence is temporarily unavailable', () => {
+  const route = source('app/api/assistant/route.ts');
+  assert.match(route, /export const maxDuration = 60/);
+  assert.match(route, /knowledge retrieval unavailable/);
+  assert.match(route, /conversation persistence unavailable/);
+  assert.match(route, /persisted = false/);
+});

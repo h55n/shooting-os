@@ -7,6 +7,8 @@ import { retrieveKnowledge } from '@/lib/knowledge/retrieval';
 import { fail, ok } from '@/lib/api/response';
 import { ownerErrorResponse, requireOwner } from '@/lib/auth/owner';
 
+export const maxDuration = 60;
+
 const AssistantSchema = z.object({
   message: z.string().trim().min(1).max(2000),
   conversationId: z.string().uuid().optional(),
@@ -52,7 +54,12 @@ export async function POST(request: NextRequest) {
   const actions = actionsFor(message);
 
   try {
-    const knowledge = await retrieveKnowledge({ query: message, count: 6, verifiedOnly: true });
+    let knowledge: Awaited<ReturnType<typeof retrieveKnowledge>> = [];
+    try {
+      knowledge = await retrieveKnowledge({ query: message, count: 6, verifiedOnly: true });
+    } catch {
+      console.warn('[assistant API] knowledge retrieval unavailable');
+    }
     const history = conversationHistory.slice(-8)
       .map((entry) => `${entry.role === 'user' ? 'User' : 'Assistant'}: ${entry.content}`)
       .join('\n');
@@ -81,23 +88,29 @@ ${knowledgeContext(knowledge)}`,
     let persisted = false;
 
     if (isSupabaseConfigured()) {
-      const supabase = await createClient();
-      if (!conversationId) {
-        const { data: conversation, error } = await supabase
-          .from('conversations')
-          .insert({ user_id: owner.id, title: message.slice(0, 80), context: { surface: 'assist' } })
-          .select('id')
-          .single();
-        if (error || !conversation) throw new Error(error?.message || 'Conversation create failed');
-        conversationId = conversation.id;
-      }
+      try {
+        const supabase = await createClient();
+        if (!conversationId) {
+          const { data: conversation, error } = await supabase
+            .from('conversations')
+            .insert({ user_id: owner.id, title: message.slice(0, 80), context: { surface: 'assist' } })
+            .select('id')
+            .single();
+          if (error || !conversation) throw new Error('Conversation create failed');
+          conversationId = conversation.id;
+        }
 
-      const { error: messageError } = await supabase.from('messages').insert([
-        { conversation_id: conversationId, role: 'user', content: message },
-        { conversation_id: conversationId, role: 'assistant', content: response.text, model: response.model, tokens: response.tokens ?? null },
-      ]);
-      if (messageError) throw messageError;
-      persisted = true;
+        const { error: messageError } = await supabase.from('messages').insert([
+          { conversation_id: conversationId, role: 'user', content: message },
+          { conversation_id: conversationId, role: 'assistant', content: response.text, model: response.model, tokens: response.tokens ?? null },
+        ]);
+        if (messageError) throw new Error('Conversation message save failed');
+        persisted = true;
+      } catch {
+        conversationId = undefined;
+        persisted = false;
+        console.warn('[assistant API] conversation persistence unavailable');
+      }
     }
 
     return ok({
@@ -108,8 +121,8 @@ ${knowledgeContext(knowledge)}`,
       grounding: { matchedVerifiedSources: knowledge.length },
       meta: { model: response.model, latencyMs: response.latencyMs },
     });
-  } catch (error) {
-    console.error('[assistant API]', error);
-    return fail('Assistant failed', 'Assist abhi response nahi de saka. Dobara try karein.', 500, error instanceof Error ? error.message : error);
+  } catch {
+    console.error('[assistant API] generation unavailable');
+    return fail('Assistant failed', 'Assist abhi response nahi de saka. Dobara try karein.', 500);
   }
 }
